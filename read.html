@@ -88,7 +88,7 @@ const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { st
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const shuffle = a => a.map(x => [Math.random(), x]).sort((p, q) => p[0] - q[0]).map(x => x[1]);
-let me = null, ns = null, reads = [], screen = "load", roster = null, classCode = "", chosen = null;
+let me = null, ns = null, reads = [], testsTaken = 0, screen = "load", roster = null, classCode = "", chosen = null;
 let prefs = JSON.parse(localStorage.getItem("ns_prefs") || '{"size":21,"easy":false}');
 
 function toast(t){ const el = $("#toast"); el.textContent = t; el.classList.add("show"); setTimeout(() => el.classList.remove("show"), 2000); }
@@ -122,8 +122,9 @@ async function tryPicture(pic, el){
   $(".msg").textContent = data.reason === "locked" ? "Too many tries. Ask your teacher, or wait 10 minutes." : "Not that one. Try again!";
 }
 async function loadMe(){
-  const [a, b] = await Promise.all([db.rpc("ns_me"), db.from("ns_reads").select("text_id, band, score, created_at").eq("student_id", me.student_id).order("created_at")]);
-  ns = a.data || { band: 0, retest: true }; reads = b.data || [];
+  const [a, b, c] = await Promise.all([db.rpc("ns_me"), db.from("ns_reads").select("text_id, band, score, created_at").eq("student_id", me.student_id).order("created_at"),
+    db.from("ns_tests").select("id").eq("student_id", me.student_id).eq("kind", "test")]);
+  ns = a.data || { band: 0, retest: true }; reads = b.data || []; testsTaken = (c.data || []).length;
 }
 async function bye(){ if(!confirm("Leave Nestory?")) return; await db.rpc("student_logout"); me = null; ns = null; go("code"); }
 
@@ -162,7 +163,7 @@ function nextItem(){
   const list = TEST_A[T.b] || [], used = T.used[T.b] || [];
   const left = list.map((x, i) => i).filter(i => !used.includes(i));
   if(!left.length) return null;
-  const i = left[0]; (T.used[T.b] = used).push(i); const it = list[i];
+  const i = left[Math.floor(Math.random() * left.length)]; (T.used[T.b] = used).push(i); const it = list[i];
   return { band: T.b, idx: i, s: it[0], opts: shuffle(it[1].map((o, k) => ({ o, ok: k === it[2] }))) };
 }
 function finishA(){
@@ -170,7 +171,8 @@ function finishA(){
   T.bandA = top;
   const keys = Object.keys(TEST_B).map(Number), target = Math.max(5, top);
   const pb = keys.filter(k => k <= target + 1).sort((a, b) => b - a)[0] || keys[0];
-  T.part = "B"; T.pb = pb; T.B = TEST_B[pb]; T.bi = -1; T.bRight = 0;
+  const forms = TEST_B[pb], fi = testsTaken % forms.length;
+  T.part = "B"; T.pb = pb; T.B = forms[fi]; T.form = "ABC"[fi] || "A"; T.bi = -1; T.bRight = 0;
   go("test");
 }
 function answerA(k){
@@ -200,7 +202,7 @@ async function finishTest(){
   const ra = Math.round(B[4] + (B[5] - B[4]) * frac);
   const right = T.answers.filter(a => a.ok).length, score = Math.round(right / T.answers.length * 100);
   const skills = Object.fromEntries(Object.entries(T.skills).map(([k, v]) => [k, Math.round(v[0] / v[1] * 100)]));
-  const { data, error } = await db.rpc("ns_save_test", { p_band: band, p_reading_age: ra, p_score: score, p_skills: skills, p_answers: T.answers, p_form: "A" });
+  const { data, error } = await db.rpc("ns_save_test", { p_band: band, p_reading_age: ra, p_score: score, p_skills: skills, p_answers: T.answers, p_form: T.form || "A" });
   if(error || !data || !data.ok){ toast("I couldn't save that. Ask your teacher."); return go("home"); }
   await loadMe(); R = { kind: "test", band, early: T.bandA < 5 }; go("result");
 }
@@ -275,10 +277,11 @@ async function nextG(){
 /* ---------- band check (move up) ---------- */
 let CK = null;
 function startCheck(){
-  const nb = ns.band + 1, items = [];
-  (TEST_A[nb] || []).forEach(it => items.push({ q: it[0].replace("___", "_____"), opts: it[1], a: it[2], type: "Which word fits best?" }));
-  (TEST_A[Math.min(20, nb + 1)] || []).slice(0, 2).forEach(it => items.push({ q: it[0].replace("___", "_____"), opts: it[1], a: it[2], type: "Which word fits best?" }));
-  const P = TEST_B[nb]; if(P) P.q.forEach(q => items.push({ q: q[0], opts: q[1], a: q[2], type: P.title }));
+  const nb = ns.band + 1, items = [], forms = TEST_B[nb] || [], P = forms.length ? forms[(testsTaken + 1) % forms.length] : null;
+  const sent = shuffle(TEST_A[nb] || []).slice(0, P ? Math.max(4, 10 - P.q.length) : 8);
+  if(sent.length < 6) (TEST_A[Math.min(20, nb + 1)] || []).slice(0, 6 - sent.length).forEach(it => sent.push(it));
+  sent.forEach(it => items.push({ q: it[0].replace("___", "_____"), opts: it[1], a: it[2], type: "Which word fits best?" }));
+  if(P) P.q.forEach(q => items.push({ q: q[0], opts: q[1], a: q[2], type: P.title }));
   CK = { items: items.slice(0, 10), i: 0, right: 0, answers: [], passage: P, order: null }; go("check");
 }
 function checkView(){

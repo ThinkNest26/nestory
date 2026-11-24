@@ -74,15 +74,15 @@ const TEST_A = {
 /* ---------------- Test, section B: passages ----------------
    questions: [question, [options], correct index, skill] */
 const TEST_B = {
-  6: { title: "The Lost Kite", text: [
+  6: [{ title: "The Lost Kite", text: [
       "Ben had a red kite. One windy day, he took it to the park with Dad. The kite went up and up. It danced in the sky like a bird.",
       "Then the string slipped out of Ben's hand! The kite flew over the trees. Ben was sad. Dad held his hand and they looked and looked.",
       "At last they found the kite in a big bush. Ben hugged it tight. \"I will hold on next time,\" he said."],
     q: [["What colour was Ben's kite?", ["red", "blue", "green"], 0, "retrieval"],
         ["What happened after the string slipped?", ["The kite flew over the trees.", "They went home for lunch.", "Ben flew the kite again."], 0, "sequencing"],
         ["How did Ben feel when they found the kite?", ["happy", "angry", "sleepy"], 0, "inference"],
-        ["\"It danced in the sky.\" This means the kite…", ["moved about happily", "fell to the ground", "stayed very still"], 0, "vocabulary"]] },
-  9: { title: "Hedgehogs", text: [
+        ["\"It danced in the sky.\" This means the kite…", ["moved about happily", "fell to the ground", "stayed very still"], 0, "vocabulary"]] }],
+  9: [{ title: "Hedgehogs", text: [
       "Hedgehogs are small mammals with about 5,000 sharp spines on their backs. When a hedgehog is frightened, it rolls into a tight ball so that its spines point outwards. This protects its soft tummy from predators such as foxes and badgers.",
       "Hedgehogs are nocturnal, which means they sleep during the day and search for food at night. They eat beetles, worms, caterpillars and slugs, so gardeners are often pleased to see them.",
       "In winter, food is hard to find. Hedgehogs build nests of leaves and hibernate until spring. While they hibernate, their hearts beat very slowly and they use the fat they stored in autumn.",
@@ -91,8 +91,8 @@ const TEST_B = {
         ["What does \"nocturnal\" mean?", ["active at night", "very small", "covered in spines"], 0, "vocabulary"],
         ["Why are gardeners pleased to see hedgehogs?", ["They eat slugs and insects that harm plants.", "They dig holes for planting.", "They keep foxes away from houses."], 0, "inference"],
         ["What do hedgehogs live on while they hibernate?", ["fat they stored in autumn", "worms they find at night", "leaves from their nest"], 0, "retrieval"],
-        ["Which is the best heading for the last paragraph?", ["How you can help hedgehogs", "What hedgehogs eat", "Hedgehogs in winter"], 0, "summarising"]] },
-  12: { title: "The Lighthouse Keeper's Daughter", text: [
+        ["Which is the best heading for the last paragraph?", ["How you can help hedgehogs", "What hedgehogs eat", "Hedgehogs in winter"], 0, "summarising"]] }],
+  12: [{ title: "The Lighthouse Keeper's Daughter", text: [
       "Every evening, Noor climbed the hundred and twelve steps of the lighthouse to help her father light the great lamp. Tonight, however, he was ill in bed, and the storm outside was growing fiercer by the minute.",
       "Noor pressed her face against the cold window. Far out at sea, a tiny light was rising and falling with the waves. A fishing boat! Without the lighthouse beam, it would never find its way past the rocks.",
       "Her heart was pounding as she started to climb. Her legs ached and the wind howled through the cracks in the walls, but she did not stop. At the top, her fingers trembled as she struck the match. Once, twice… on the third try, the wick caught, and a golden beam swept across the black water.",
@@ -101,8 +101,8 @@ const TEST_B = {
         ["How did Noor feel as she climbed the steps?", ["nervous but determined", "bored and sleepy", "angry with her father"], 0, "inference"],
         ["What does \"fiercer\" mean in the first paragraph?", ["stronger and more violent", "quieter and calmer", "colder and wetter"], 0, "vocabulary"],
         ["\"The wind howled through the cracks.\" This makes the storm seem…", ["wild and frightening", "gentle and peaceful", "funny and playful"], 0, "language"],
-        ["Which sentence best sums up the story?", ["Noor bravely lights the lamp and saves a fishing boat.", "Noor learns how to sail a fishing boat.", "A fishing boat sinks during a storm."], 0, "summarising"]] },
-  15: { title: "Should Zoos Exist?", text: [
+        ["Which sentence best sums up the story?", ["Noor bravely lights the lamp and saves a fishing boat.", "Noor learns how to sail a fishing boat.", "A fishing boat sinks during a storm."], 0, "summarising"]] }],
+  15: [{ title: "Should Zoos Exist?", text: [
       "For more than two hundred years, zoos have allowed people to see animals from every corner of the world. Today, however, many people question whether keeping wild animals in captivity can ever be fair.",
       "Supporters argue that modern zoos play a vital role in conservation. Breeding programmes have helped to save species such as the Arabian oryx, which had disappeared from the wild by 1972 but has since been successfully returned to the deserts of the Arabian Peninsula. Zoos also fund research and inspire millions of visitors, especially children, to care about wildlife.",
       "Critics, on the other hand, point out that even the most spacious enclosure is tiny compared with an animal's natural range. Elephants, for example, may walk many kilometres a day in the wild. Some animals in captivity develop repetitive behaviours, such as pacing, which may be a sign of stress. Critics believe the money spent on zoos would be better used to protect habitats directly.",
@@ -111,23 +111,13 @@ const TEST_B = {
         ["What does \"captivity\" mean?", ["being kept in an enclosed place", "living freely in the wild", "being very old"], 0, "vocabulary"],
         ["Why does the writer mention pacing?", ["as possible evidence that animals are stressed", "to show that zoo animals are healthy", "to describe how elephants find food"], 0, "inference"],
         ["Why does the writer use \"on the other hand\" in the third paragraph?", ["to introduce the opposite point of view", "to give an example of a zoo", "to show the text is ending"], 0, "structure"],
-        ["What is the writer's conclusion?", ["Zoos can be justified if they protect species and give animals space.", "All zoos should close as soon as possible.", "Zoos are perfect and should not change."], 0, "summarising"]] }
+        ["What is the writer's conclusion?", ["Zoos can be justified if they protect species and give animals space.", "All zoos should close as soon as possible.", "Zoos are perfect and should not change."], 0, "summarising"]] }]
 };
 
 /* ---------------- Reading texts ----------------
    Each text: id, band, title, type, text (paragraphs), vocab {word: meaning},
    questions [q, options, answer, skill], grammar {focus, explain, spots [phrases in the text], practice [q, options, answer]} */
 const TEXTS = [
-  { id: "g6-pip", band: 6, title: "Pip the Puppy", type: "Story", text: [
-      "Pip is a little puppy. He has a red ball and a blue bone. Every day, Pip runs in the garden and digs in the mud.",
-      "Pip likes foxes, boxes and buses! One day, Pip saw two cats on the wall. He barked and barked. The cats jumped down and ran away.",
-      "Pip was so proud. Then Mum called him in for tea and a big hug."],
-    vocab: { proud: "pleased with yourself", barked: "made the loud sound a dog makes" },
-    questions: [["What colour is Pip's ball?", ["red", "blue", "green"], 0, "retrieval"], ["Where does Pip dig?", ["in the mud", "in the bath", "on the bus"], 0, "retrieval"],
-      ["Why did the cats run away?", ["Pip barked at them.", "It started to rain.", "They wanted their tea."], 0, "inference"], ["How did Pip feel at the end?", ["proud", "scared", "cross"], 0, "inference"]],
-    grammar: { focus: "Joining with 'and' · plurals -s and -es", explain: "We use 'and' to join two ideas. To make a word mean more than one, we add -s, or -es after x, s, sh and ch.",
-      spots: ["runs in the garden and digs in the mud", "foxes, boxes and buses", "jumped down and ran away"],
-      practice: [["Which word joins the two ideas? \"The cats jumped down and ran away.\"", ["and", "cats", "down"], 0], ["One fox, two ___", ["foxes", "foxs", "fox"], 0], ["One cat, two ___", ["cats", "cates", "cat"], 0]] } },
   { id: "p9-sandcastle", band: 9, title: "The Great Sandcastle", type: "Story", text: [
       "Last Saturday, Aisha and her brother Zayd went to the beach. The sun was shining and the waves were crashing on the shore.",
       "They wanted to build the biggest sandcastle on the beach, but the sand was too dry. Zayd fetched water in a bucket, and Aisha patted the wet sand into towers. By lunchtime, the castle had four towers, a moat and a bridge made of shells.",
@@ -163,3 +153,204 @@ const TEXTS = [
       spots: ["which connected Manhattan and Brooklyn across the East River", "whose plans used steel wire cables", "(called caissons)", "should be recognised", "may cross"],
       practice: [["Which word starts the relative clause? \"The engineer, who designed the bridge, was famous.\"", ["who", "designed", "famous"], 0], ["Which sentence uses brackets correctly?", ["The caissons (underwater chambers) were dangerous.", "The (caissons underwater) chambers were dangerous.", "The caissons were (dangerous."], 0], ["Which modal verb shows the most certainty?", ["will", "might", "could"], 0]] } }
 ];
+
+/* =================== GREEN BAND: full set =================== */
+/* GREEN BAND (6) · Year 1 · reading age 6y–6y3m · RWI Pink
+   Grammar: joining words and clauses with 'and'; plural noun suffixes -s and -es */
+const GREEN_A = [
+  ["Sam was sad because he had lost his ___.", ["kite", "jumped", "green", "under"], 0],
+  ["The farmer milks the ___ every morning.", ["cow", "chair", "sleep", "blue"], 0],
+  ["It was dark, so we switched on the ___.", ["light", "apple", "quickly", "swim"], 0],
+  ["The little bird built a ___ in the tree.", ["nest", "shoe", "loud", "after"], 0],
+  ["I brush my ___ before I go to bed.", ["teeth", "chairs", "cloud", "lunch"], 0],
+  ["The fish swims in the ___.", ["sea", "sky", "bed", "tree"], 0],
+  ["We put on our coats because it was ___.", ["cold", "hot", "happy", "green"], 0],
+  ["The baby is sleeping, so please be ___.", ["quiet", "loud", "fast", "wet"], 0],
+  ["Mum cut the cake with a ___.", ["knife", "sock", "hat", "book"], 0],
+  ["A frog can ___ very high.", ["jump", "sing", "read", "cook"], 0],
+  ["I drink my milk from a ___.", ["cup", "bag", "pen", "box"], 0],
+  ["Ben kicked the ball into the ___.", ["goal", "soup", "bed", "sky"], 0],
+  ["We ate our lunch and then went out to ___.", ["play", "sleep", "blue", "cup"], 0],
+  ["The rabbit hid in a ___ under the ground.", ["hole", "cloud", "cake", "car"], 0],
+  ["My big sister helps me ___ my shoes.", ["tie", "eat", "sing", "drink"], 0],
+  ["The bus stopped and the children got ___.", ["off", "sad", "red", "fast"], 0],
+  ["A bee makes ___.", ["honey", "milk", "bread", "eggs"], 0],
+  ["At night I can see the moon and the ___.", ["stars", "cats", "shops", "rain"], 0],
+  ["The happy dog wagged its ___.", ["tail", "hat", "cup", "book"], 0],
+  ["Mia painted a picture of a red ___.", ["flower", "sing", "quickly", "under"], 0],
+  ["When the ice cream got hot, it began to ___.", ["melt", "grow", "jump", "sing"], 0],
+  ["Dad read me a story before I went to ___.", ["sleep", "swim", "cook", "shop"], 0],
+  ["The duck swam across the ___.", ["pond", "road", "bed", "roof"], 0],
+  ["We need a ___ to open the door.", ["key", "sock", "leaf", "spoon"], 0],
+  ["The clown had a big red ___.", ["nose", "tree", "bus", "cloud"], 0],
+  ["I wear my boots when it is ___ outside.", ["rainy", "happy", "tired", "hungry"], 0],
+  ["The cat drank all of its ___.", ["milk", "chair", "car", "coat"], 0],
+  ["Birds use their ___ to fly.", ["wings", "teeth", "ears", "hands"], 0],
+  ["The train went into a long, dark ___.", ["tunnel", "sandwich", "pillow", "pencil"], 0],
+  ["Lena put the letter in the ___.", ["post box", "bath", "oven", "fridge"], 0]
+];
+
+const GREEN_B = [
+  { title: "The Lost Kite", text: [
+      "Ben had a red kite. One windy day, he took it to the park with Dad. The kite went up and up. It danced in the sky like a bird.",
+      "Then the string slipped out of Ben's hand! The kite flew over the trees. Ben was sad. Dad held his hand and they looked and looked.",
+      "At last they found the kite in a big bush. Ben hugged it tight. \"I will hold on next time,\" he said."],
+    q: [["What colour was Ben's kite?", ["red", "blue", "green"], 0, "retrieval"],
+        ["What happened after the string slipped?", ["The kite flew over the trees.", "They went home for lunch.", "Ben flew the kite again."], 0, "sequencing"],
+        ["How did Ben feel when they found the kite?", ["happy", "angry", "sleepy"], 0, "inference"],
+        ["\"It danced in the sky.\" This means the kite…", ["moved about happily", "fell to the ground", "stayed very still"], 0, "vocabulary"]] },
+  { title: "Ducks", text: [
+      "Ducks are birds. They live near ponds, lakes and rivers.",
+      "Ducks have webbed feet. Their feet are like paddles, so they can swim fast. Ducks have soft feathers. The feathers have oil on them, so the water rolls off and the duck stays dry.",
+      "Ducks eat seeds, bugs and plants. A mother duck lays her eggs in a nest. Her babies are called ducklings. The ducklings follow their mum in a long line!"],
+    q: [["Where do ducks live?", ["near ponds, lakes and rivers", "high up in trees", "in hot deserts"], 0, "retrieval"],
+        ["Why can ducks swim fast?", ["Their feet are like paddles.", "They are very small.", "They eat lots of bugs."], 0, "retrieval"],
+        ["What are baby ducks called?", ["ducklings", "kittens", "cubs"], 0, "retrieval"],
+        ["What keeps a duck dry?", ["the oil on its feathers", "its long line", "the seeds it eats"], 0, "inference"]] },
+  { title: "Rainy Day", text: [
+      "Pitter, patter, on the window,",
+      "Pitter, patter, on the street.",
+      "Rain is dripping off the rooftops,",
+      "Rain is splashing on my feet.",
+      "On go boots and on goes coat,",
+      "Out I go to jump and play.",
+      "Splish and splosh in all the puddles,",
+      "What a lovely rainy day!"],
+    q: [["Where is the rain dripping from?", ["the rooftops", "the trees", "the clouds"], 0, "retrieval"],
+        ["What does the child put on?", ["boots and a coat", "a hat and gloves", "a swimsuit"], 0, "retrieval"],
+        ["How does the child feel about the rain?", ["happy", "scared", "cross"], 0, "inference"],
+        ["Which words sound like the rain?", ["pitter, patter", "boots and coat", "lovely day"], 0, "language"]] }
+];
+
+const AND = { focus: "Joining with 'and'", explain: "We use 'and' to join two words, or to join two ideas into one sentence." };
+const PLURAL = { focus: "Plurals: -s and -es", explain: "To mean more than one, we usually add -s (cat → cats). After s, x, sh, ch and z we add -es (fox → foxes, dish → dishes)." };
+
+const GREEN_TEXTS = [
+  { id: "g6-pip", band: 6, title: "Pip the Puppy", type: "Story", text: [
+      "Pip is a little brown puppy. He has a red ball and a blue bone. Every morning, Pip runs in the garden and digs in the mud. Mum says, \"Pip, you are a muddy pup!\"",
+      "Pip likes to sniff the flowers and chase the bees. He likes to sit in the sun and watch the birds.",
+      "One day, Pip saw two cats on the wall. They had long tails and green eyes. Pip barked and barked. The cats jumped down and ran away. Pip wagged his tail. He felt so proud.",
+      "Then it began to rain. Pip ran inside and shook his wet fur. Water went all over the floor! Mum laughed and gave him a big hug. Then she dried him with a soft towel.",
+      "Pip curled up in his bed and went to sleep."],
+    vocab: { proud: "pleased with yourself", curled: "lay down in a round shape" },
+    questions: [["What colour is Pip's ball?", ["red", "blue", "brown"], 0, "retrieval"], ["Why did the cats run away?", ["Pip barked at them.", "It started to rain.", "They wanted their tea."], 0, "inference"],
+      ["What happened when Pip shook his wet fur?", ["Water went all over the floor.", "The cats came back.", "He found his bone."], 0, "sequencing"], ["How did Pip feel after the cats ran away?", ["proud", "scared", "sleepy"], 0, "inference"]],
+    grammar: Object.assign({}, AND, { spots: ["a red ball and a blue bone", "runs in the garden and digs in the mud", "sniff the flowers and chase the bees", "jumped down and ran away", "laughed and gave him a big hug"],
+      practice: [["Which word joins the two ideas? \"Pip ran inside and shook his wet fur.\"", ["and", "inside", "wet"], 0], ["Choose the joining word: \"Pip has a red ball ___ a blue bone.\"", ["and", "the", "is"], 0], ["Which sentence joins two things Pip did?", ["Pip sniffed the flowers and chased the bees.", "Pip is a little puppy.", "Pip went to sleep."], 0]] }) },
+  { id: "g6-bus", band: 6, title: "The Big Red Bus", type: "Story", text: [
+      "Grandad drives a big red bus. Every day, he drives it through the town.",
+      "At the first stop, two boys get on with their bags. At the next stop, three girls get on with their lunch boxes. Then a man gets on with a box of glasses, and a lady gets on with six bunches of flowers.",
+      "\"Is there room for me?\" asks a little fox at the last stop. He has two dishes of jam and a basket of eggs. \"Yes, hop on!\" says Grandad.",
+      "The bus goes past the shops and the parks. It goes past the trees and the houses. The children sing songs, and the fox shares his jam.",
+      "At the end of the day, everyone gets off. \"Thank you, Grandad!\" they shout. Grandad smiles. He loves his big red bus and all the people (and foxes!) who ride on it."],
+    vocab: { bunches: "groups of flowers held together", basket: "a bag made of woven sticks, with a handle" },
+    questions: [["Who drives the bus?", ["Grandad", "the fox", "Mum"], 0, "retrieval"], ["What does the man get on with?", ["a box of glasses", "a basket of eggs", "lunch boxes"], 0, "retrieval"],
+      ["What did the fox share?", ["his jam", "his eggs", "his songs"], 0, "retrieval"], ["How does Grandad feel about his bus?", ["He loves it.", "He is bored of it.", "He is scared of it."], 0, "inference"]],
+    grammar: Object.assign({}, PLURAL, { spots: ["boys", "bags", "lunch boxes", "glasses", "bunches", "dishes", "shops", "parks", "foxes"],
+      practice: [["One box, two ___", ["boxes", "boxs", "box"], 0], ["One bus, two ___", ["buses", "buss", "bus"], 0], ["One shop, two ___", ["shops", "shopes", "shop"], 0]] }) },
+  { id: "g6-picnic", band: 6, title: "Zara's Picnic", type: "Story", text: [
+      "It was a sunny Saturday. Zara and her brother Adam wanted to have a picnic in the park.",
+      "Zara packed the sandwiches and the apples. Adam packed the juice and the cups. Mum packed a big blanket.",
+      "At the park, they found a spot under a tall tree. They spread out the blanket and sat down. Just then, a hungry duck waddled up. \"Quack!\" it said. It looked at the sandwiches.",
+      "\"No, Mr Duck,\" said Zara. \"Bread is not good for ducks.\" Adam had an idea. He gave the duck some peas from his lunch box. The duck gobbled them up and quacked again.",
+      "Soon, four more ducks came. Zara and Adam laughed and shared all their peas. \"Next time,\" said Mum, \"we will bring a bag of peas for the ducks and a bag of sandwiches for us!\""],
+    vocab: { waddled: "walked with short steps, rocking from side to side", gobbled: "ate very quickly" },
+    questions: [["Where did they have the picnic?", ["in the park", "on the beach", "at school"], 0, "retrieval"], ["What did Adam give the duck?", ["peas", "bread", "apples"], 0, "retrieval"],
+      ["Why didn't Zara give the duck her sandwich?", ["Bread is not good for ducks.", "She was very hungry.", "The duck did not like it."], 0, "inference"], ["What will they bring next time?", ["a bag of peas for the ducks", "a bigger blanket", "more cups"], 0, "prediction"]],
+    grammar: Object.assign({}, AND, { spots: ["Zara and her brother Adam", "the sandwiches and the apples", "the juice and the cups", "spread out the blanket and sat down", "gobbled them up and quacked again"],
+      practice: [["Choose the joining word: \"Zara packed the sandwiches ___ the apples.\"", ["and", "but", "the"], 0], ["Find the joining word: \"The duck gobbled them up and quacked again.\"", ["and", "duck", "up"], 0], ["Which sentence joins \"They spread out the blanket.\" and \"They sat down.\"?", ["They spread out the blanket and sat down.", "They spread out the blanket sat down.", "And they spread out the blanket."], 0]] }) },
+  { id: "g6-garden", band: 6, title: "Grandma's Garden", type: "Story", text: [
+      "Grandma has a garden behind her house. Every week, Leo helps her.",
+      "First, they pull out the weeds. Then they water the plants with two big cans. Leo likes the tomatoes best. They are red and round.",
+      "In one corner, there are bushes with lots of berries. Leo picks them and puts them in two dishes. \"Look!\" says Grandma. \"Can you see the bugs?\"",
+      "Leo looks closely. He can see ladybirds on the leaves and worms in the soil. He can see bees on the flowers. \"Bugs help the garden,\" says Grandma. \"The bees help the flowers, and the worms help the soil.\"",
+      "At the end of the day, Leo and Grandma sit on the bench. \"I love your garden, Grandma,\" says Leo. \"It is our garden,\" Grandma smiles."],
+    vocab: { weeds: "plants that grow where you don't want them", soil: "the earth that plants grow in" },
+    questions: [["What does Leo like best?", ["the tomatoes", "the berries", "the bees"], 0, "retrieval"], ["Where does Leo put the berries?", ["in two dishes", "in his pocket", "in the cans"], 0, "retrieval"],
+      ["How do worms help the garden?", ["They help the soil.", "They eat the flowers.", "They water the plants."], 0, "retrieval"], ["Why does Grandma say \"It is our garden\"?", ["Leo helps her look after it.", "Leo planted all of it.", "She is giving it away."], 0, "inference"]],
+    grammar: Object.assign({}, PLURAL, { spots: ["weeds", "plants", "cans", "bushes", "dishes", "bugs", "worms", "bees", "flowers"],
+      practice: [["One bush, two ___", ["bushes", "bushs", "bush"], 0], ["One dish, two ___", ["dishes", "dishs", "dish"], 0], ["One worm, two ___", ["worms", "wormes", "worm"], 0]] }) },
+  { id: "g6-camels", band: 6, title: "Camels", type: "Information", text: [
+      "Camels live in hot, dry deserts. They have long legs and big, flat feet. Their feet help them walk on soft sand without sinking.",
+      "Camels have humps on their backs. Some camels have one hump, and some have two humps. The hump is full of fat, not water! The fat gives the camel energy when there is not much food.",
+      "Camels can go for days without drinking. When they find water, they can drink a lot very fast.",
+      "Camels have long eyelashes and can close their noses. This keeps out the sand when the wind blows.",
+      "People have used camels for a very long time. Camels carry people and bags across the desert. In the UAE, people race camels and look after them with care."],
+    vocab: { deserts: "hot, dry places with lots of sand", energy: "the power to move and do things", eyelashes: "the little hairs on the edge of your eyelids" },
+    questions: [["What is inside a camel's hump?", ["fat", "water", "sand"], 0, "retrieval"], ["Why do camels have big, flat feet?", ["to walk on soft sand without sinking", "to swim in rivers", "to climb trees"], 0, "retrieval"],
+      ["How do camels keep the sand out?", ["long eyelashes and closing their noses", "drinking lots of water", "carrying bags"], 0, "retrieval"], ["What does \"energy\" mean?", ["the power to move and do things", "a kind of food", "a hot wind"], 0, "vocabulary"]],
+    grammar: Object.assign({}, AND, { spots: ["long legs and big, flat feet", "one hump, and some have two humps", "long eyelashes and can close their noses", "carry people and bags", "race camels and look after them"],
+      practice: [["Choose the joining word: \"Camels have long legs ___ big feet.\"", ["and", "so", "the"], 0], ["Which sentence joins two things camels can do?", ["Camels can close their noses and drink fast.", "Camels live in deserts.", "The hump is full of fat."], 0], ["Which sentence joins \"Camels live in deserts.\" and \"They eat plants.\"?", ["Camels live in deserts and they eat plants.", "Camels live in deserts they eat plants.", "Camels and live in deserts."], 0]] }) },
+  { id: "g6-seed", band: 6, title: "How to Plant a Seed", type: "Instructions", text: [
+      "You will need: two small pots, some soil, three bean seeds and a cup of water.",
+      "1. Fill the pots with soil. Press it down gently with your fingers.",
+      "2. Make a small hole in the soil with a pencil.",
+      "3. Put one seed in each hole. Cover the seeds with soil.",
+      "4. Water the pots. Do not give them too much water!",
+      "5. Put the pots on a sunny window. Check them every day and keep the soil damp.",
+      "After about a week, you will see small green shoots. The plants need sunlight and water to grow. Draw your plants every few days. Which pot grows the fastest?"],
+    vocab: { damp: "a little bit wet", shoots: "new parts of a plant growing up out of the soil" },
+    questions: [["How many bean seeds do you need?", ["three", "two", "one"], 0, "retrieval"], ["Where should you put the pots?", ["on a sunny window", "in a dark cupboard", "in the fridge"], 0, "retrieval"],
+      ["What do the plants need to grow?", ["sunlight and water", "pencils and paper", "sand and wind"], 0, "retrieval"], ["Why should you not give the seeds too much water?", ["The seeds could get too wet and rot.", "The pots would turn blue.", "The plants would grow too fast."], 0, "inference"]],
+    grammar: Object.assign({}, PLURAL, { spots: ["pots", "seeds", "fingers", "shoots", "plants"],
+      practice: [["One pot, two ___", ["pots", "potes", "pot"], 0], ["One glass, two ___", ["glasses", "glasss", "glass"], 0], ["Which word means more than one?", ["seeds", "seed", "soil"], 0]] }) },
+  { id: "g6-senses", band: 6, title: "Our Five Senses", type: "Information", text: [
+      "We have five senses. They help us learn about the world around us.",
+      "We see with our eyes. We can see colours and shapes, and we can see things near and far.",
+      "We hear with our ears. We can hear birds singing and children laughing.",
+      "We smell with our nose. We can smell flowers and fresh bread.",
+      "We taste with our tongue. Some foods taste sweet, and some foods taste sour. Lemons are sour and honey is sweet!",
+      "We feel with our skin. We can feel if something is hot or cold, soft or hard.",
+      "Our senses keep us safe too. We can smell smoke and hear a car coming. Which sense do you use the most?"],
+    vocab: { senses: "the ways our body finds out about the world", sour: "a sharp taste, like a lemon", tongue: "the part inside your mouth you taste with" },
+    questions: [["What do we use to taste?", ["our tongue", "our ears", "our skin"], 0, "retrieval"], ["Which food is sour?", ["lemons", "honey", "bread"], 0, "retrieval"],
+      ["How many senses do we have?", ["five", "four", "six"], 0, "retrieval"], ["How can our senses keep us safe?", ["We can smell smoke and hear a car coming.", "We can see colours.", "We can taste honey."], 0, "inference"]],
+    grammar: Object.assign({}, AND, { spots: ["colours and shapes", "near and far", "birds singing and children laughing", "flowers and fresh bread", "Lemons are sour and honey is sweet"],
+      practice: [["Choose the joining word: \"We see with our eyes ___ hear with our ears.\"", ["and", "so", "or"], 0], ["Which part joins two words with 'and'?", ["near and far", "with our eyes", "five senses"], 0], ["Which sentence joins \"I can smell the flowers.\" and \"I can smell the bread.\"?", ["I can smell the flowers and the bread.", "I can smell the flowers the bread.", "And I can smell the flowers."], 0]] }) },
+  { id: "g6-homes", band: 6, title: "Animal Homes", type: "Information", text: [
+      "Animals need homes, just like us. Homes keep them safe and warm.",
+      "Birds build nests in trees. They use twigs, grass and feathers. Rabbits dig burrows under the ground. A burrow has lots of tunnels.",
+      "Bees live in hives. Thousands of bees live together in one hive! Foxes live in dens. A den can be under a tree or in a hole in a bank.",
+      "Some animals carry their homes with them. Snails and tortoises have hard shells on their backs. When they are scared, they hide inside their shells.",
+      "Even tiny insects have homes. Ants make nests under the ground, with lots of little rooms. Which animal home would you like to visit?"],
+    vocab: { burrows: "holes and tunnels that animals dig under the ground", hives: "homes where bees live together", insects: "tiny animals with six legs" },
+    questions: [["Where do rabbits live?", ["in burrows", "in hives", "in trees"], 0, "retrieval"], ["What do birds use to build nests?", ["twigs, grass and feathers", "sand and stones", "shells"], 0, "retrieval"],
+      ["When do snails hide in their shells?", ["when they are scared", "when they are hungry", "when it is sunny"], 0, "retrieval"], ["Which animal carries its home on its back?", ["a tortoise", "a fox", "a bee"], 0, "inference"]],
+    grammar: Object.assign({}, PLURAL, { spots: ["nests", "twigs", "burrows", "tunnels", "hives", "Foxes", "dens", "shells"],
+      practice: [["One fox, two ___", ["foxes", "foxs", "fox"], 0], ["One nest, two ___", ["nests", "nestes", "nest"], 0], ["Which word means more than one?", ["hives", "hive", "home"], 0]] }) },
+  { id: "g6-pockets", band: 6, title: "What's in My Pockets?", type: "Poem", text: [
+      "In my pockets, what's inside?",
+      "Let me look, I will not hide!",
+      "Two red buttons, round and bright,",
+      "Three smooth pebbles, grey and white.",
+      "Four old tickets from the bus,",
+      "Five small boxes (what a fuss!),",
+      "Six tiny shells from by the sea,",
+      "And sticky sweets, just for me!",
+      "Mum says, \"Empty them, please do!\"",
+      "So now my pockets look brand new."],
+    vocab: { pebbles: "small, smooth stones", fuss: "a lot of worry about something small" },
+    questions: [["How many red buttons are in the pockets?", ["two", "three", "six"], 0, "retrieval"], ["Where did the shells come from?", ["the sea", "the bus", "the shop"], 0, "retrieval"],
+      ["What does Mum ask the child to do?", ["empty the pockets", "find the buttons", "buy some sweets"], 0, "retrieval"], ["Which two words rhyme?", ["inside and hide", "bright and sea", "bus and new"], 0, "language"]],
+    grammar: Object.assign({}, PLURAL, { spots: ["pockets", "buttons", "pebbles", "tickets", "boxes", "shells", "sweets"],
+      practice: [["One box, two ___", ["boxes", "boxs", "box"], 0], ["One button, two ___", ["buttons", "buttones", "button"], 0], ["One shell, two ___", ["shells", "shelles", "shell"], 0]] }) },
+  { id: "g6-beach", band: 6, title: "At the Beach", type: "Poem", text: [
+      "Sun and sand and sea and sky,",
+      "Gulls and kites go flying by.",
+      "I dig a hole and build a wall,",
+      "I find a crab, so very small!",
+      "I splash and paddle, jump and run,",
+      "Mum and Dad join in the fun.",
+      "Ice cream drips and towels flap,",
+      "Baby has a sleepy nap.",
+      "We pack our bags and wave goodbye",
+      "To sun and sand and sea and sky."],
+    vocab: { gulls: "seabirds with white and grey feathers", paddle: "walk in shallow water" },
+    questions: [["What does the child build?", ["a wall", "a boat", "a kite"], 0, "retrieval"], ["What does the child find?", ["a small crab", "a big fish", "a shell"], 0, "retrieval"],
+      ["Who has a nap?", ["Baby", "Mum", "Dad"], 0, "retrieval"], ["What is special about the first and last lines?", ["They are almost the same.", "They are questions.", "They are very long."], 0, "structure"]],
+    grammar: Object.assign({}, AND, { spots: ["Sun and sand and sea and sky", "dig a hole and build a wall", "splash and paddle, jump and run", "Mum and Dad", "pack our bags and wave goodbye"],
+      practice: [["Which word is used again and again to join words in this poem?", ["and", "sea", "the"], 0], ["Choose the joining word: \"I dig a hole ___ build a wall.\"", ["and", "the", "is"], 0], ["Which line joins two things the child does?", ["I dig a hole and build a wall.", "Baby has a sleepy nap.", "Gulls go flying by."], 0]] }) }
+];
+
+
+TEST_A[6] = GREEN_A; TEST_B[6] = GREEN_B; TEXTS.unshift(...GREEN_TEXTS);
