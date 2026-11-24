@@ -82,6 +82,20 @@
   .track{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .track .arrow{color:var(--muted);font-weight:900}
   .dots{display:inline-flex;gap:3px;vertical-align:middle}.dots i{width:11px;height:11px;border-radius:50%;box-shadow:0 0 0 1px rgba(0,0,0,.1)}
+  .tracker{min-width:760px}
+  .trow{display:grid;grid-template-columns:150px 1fr 120px 120px 90px;gap:14px;align-items:center;padding:10px 6px;border-bottom:1px solid #EEF2F7}
+  .trow.click{cursor:pointer;border-radius:12px}.trow.click:hover{background:var(--sky2)}
+  .trow.thead{font-size:12px;color:var(--muted);font-weight:900;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--line)}
+  .ladder{display:flex;gap:3px}
+  .seg{flex:1;height:34px;border-radius:9px;display:grid;place-items:center;box-shadow:inset 0 0 0 1px rgba(0,0,0,.05)}
+  .seg.on{box-shadow:inset 0 0 0 1.5px rgba(68,84,111,.35)}
+  .seg.now{box-shadow:inset 0 0 0 2.5px var(--navy)}
+  .seg span{font-size:11px;font-weight:900;color:var(--navy);white-space:nowrap}
+  .segname{flex:1;text-align:center;font-size:10px;border-top:5px solid var(--c,#ddd);padding-top:3px;border-radius:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-transform:none;letter-spacing:0}
+  .ra{display:block;font-family:"Fredoka";font-size:20px;font-weight:600;color:var(--navy)}
+  .trow .hint{display:block;font-size:12px}
+  .pill{display:inline-block;border-radius:999px;padding:5px 11px;font-weight:900;background:#F1F3F6;color:var(--muted)}
+  .pill.up{background:var(--green);color:var(--gink)}.pill.dn{background:var(--rose);color:var(--rink)}
   @media (max-width:860px){ .how{grid-template-columns:1fr 1fr} .hero{flex-direction:column;text-align:center} }
   @media (max-width:860px){ .stats{grid-template-columns:1fr 1fr} .grid2{grid-template-columns:1fr} .tabs{margin-left:0} .hide-sm{display:none} }
 </style>
@@ -331,18 +345,35 @@ function alertsView(){
     + sec("slow", "Progress slowed", "Reading age grew more slowly than time passed between the last two tests.", k => `<div class="alert" style="background:var(--amber)"><div class="tx"><b>${esc(k.picture)} ${esc(k.first_name)}</b> · progress rate ${progressRate(k.id)}</div><button class="btn small soft" onclick="S.kid='${k.id}';render()">Profile</button></div>`);
   return `<h1 style="margin-bottom:14px">Alerts · ${esc(S.cls.name)}</h1>` + (html || `<div class="card empty">🎉<br><br>Nothing needs you right now.</div>`);
 }
+function trackerCard(K){
+  const rows = K.map(k => ({ k, j: journey(k.id) })), withJ = rows.filter(x => x.j.length);
+  if(!withJ.length) return `<div class="card"><div class="lbl">📈 Reading tracker</div><p class="hint">The tracker fills in as children take their first reading test.</p></div>`;
+  const all = withJ.flatMap(x => x.j.map(e => e.band)), exp = expectedBand(S.cls.grade);
+  if(exp) all.push(exp);
+  const lo = Math.max(1, Math.min(...all) - 1), hi = Math.min(20, Math.max(...all) + 1), bands = BANDS.slice(lo, hi + 1);
+  const ladder = (s0, n0) => `<div class="ladder">${bands.map(b => { const n = b[0], inPath = n >= Math.min(s0.band, n0.band) && n <= Math.max(s0.band, n0.band);
+      const tag = n === s0.band && n === n0.band ? "Start=Now" : n === s0.band ? "Start" : n === n0.band ? "Now" : "";
+      return `<div class="seg ${inPath ? "on" : ""} ${n === n0.band ? "now" : ""}" style="background:${inPath ? b[2] : "#F1F3F6"}" title="${b[1]}">${tag ? `<span>${tag}</span>` : ""}</div>`; }).join("")}</div>`;
+  const head = `<div class="trow thead"><div>Child</div><div class="ladder">${bands.map(b => `<div class="segname" style="--c:${b[2]}" title="${b[1]}">${b[1]}${b[0] === exp ? " ★" : ""}</div>`).join("")}</div><div>Starting point</div><div>Now</div><div>Progress</div></div>`;
+  const body = rows.map(({ k, j }) => {
+    if(!j.length) return `<div class="trow" style="opacity:.6"><div><b>${esc(k.picture)} ${esc(k.first_name)}</b></div><div class="hint">Not tested yet</div><div></div><div></div><div></div></div>`;
+    const s0 = j[0], n0 = j[j.length - 1], gr = n0.ra - s0.ra;
+    return `<div class="trow click" onclick="S.kid='${k.id}';render()"><div><b>${esc(k.picture)} ${esc(k.first_name)}</b></div>${ladder(s0, n0)}
+      <div><b class="ra">${fmtAge(s0.ra)}</b><span class="hint">${bandName(s0.band)} · ${fmtDate(s0.at)}</span></div>
+      <div><b class="ra">${fmtAge(n0.ra)}</b><span class="hint">${bandName(n0.band)}${j.length > 1 ? " · " + fmtDate(n0.at) : ""}</span></div>
+      <div><span class="pill ${gr > 0 ? "up" : gr < 0 ? "dn" : ""}">${gr > 0 ? "▲ +" : gr < 0 ? "▼ " : ""}${gr}m</span></div></div>`; }).join("");
+  return `<div class="card" style="overflow-x:auto"><div class="lbl">📈 Reading tracker · starting point → now</div><div class="tracker">${head}${body}</div>
+    <p class="hint" style="margin-top:10px">Each colour is a reading band. <b>Start</b> is the band from the first reading test. <b>Now</b> is the band today.${exp ? ` ★ is the expected band for ${esc(S.cls.grade)}.` : ""} Tap a child to see their chart.</p></div>`;
+}
 function progressView(){
   const K = S.kids, counts = {}; K.forEach(k => { const b = reader(k.id).band; if(b) counts[b] = (counts[b] || 0) + 1; });
   const max = Math.max(1, ...Object.values(counts)), exp = expectedBand(S.cls.grade);
   const rates = K.map(k => [k, progressRate(k.id)]).filter(x => x[1] !== null).sort((a, b) => b[1] - a[1]);
   const skills = {}; K.forEach(k => { const t = lastTest(k.id); if(t) Object.entries(t.skills || {}).forEach(([s, v]) => (skills[s] = skills[s] || []).push(v)); });
   const terms = {}; S.tests.filter(t => t.kind === "test").forEach(t => { const g = gapOf(reader(t.student_id), t); if(g == null) return; const d = new Date(t.created_at), y = d.getMonth() >= 7 ? d.getFullYear() : d.getFullYear() - 1, key = `${y}/${String(y + 1).slice(2)} ` + (d.getMonth() >= 7 ? "Term 1" : d.getMonth() < 3 ? "Term 2" : "Term 3"); (terms[key] = terms[key] || []).push(g); });
-  const trk = K.filter(k => startOf(k.id)).map(k => { const j = journey(k.id), s0 = j[0], n0 = j[j.length - 1], gr = n0.ra - s0.ra;
-    return `<tr class="click" onclick="S.kid='${k.id}';render()"><td><b>${esc(k.picture)} ${esc(k.first_name)}</b></td><td>${raTag(s0)}<br><span class="hint">${fmtDate(s0.at)}</span></td>
-      <td><span class="dots">${j.map(e => `<i title="${bandName(e.band)} · ${fmtAge(e.ra)} · ${fmtDate(e.at)}" style="background:${bandColour(e.band)}"></i>`).join("")}</span></td><td>${raTag(n0)}<br><span class="hint">${fmtDate(n0.at)}</span></td>
-      <td><span class="gap ${gr > 0 ? "up" : gr < 0 ? "dn" : ""}">${gr > 0 ? "+" : ""}${gr}m</span></td></tr>`; }).join("");
+  const trk = trackerCard(K);
   return `<h1 style="margin-bottom:14px">Progress · ${esc(S.cls.name)}</h1>
-    <div class="card" style="overflow-x:auto"><div class="lbl">Reading tracker: starting point → now</div>${trk ? `<table><tr><th>Child</th><th>Starting point</th><th>Journey</th><th>Now</th><th>Progress</th></tr>${trk}</table><p class="hint" style="margin-top:8px">Each dot is a test or a band move, in its band colour. Tap a child for their full chart.</p>` : `<p class="hint">The tracker fills in as children take their first reading test.</p>`}</div>
+    ${trk}
     <div class="grid2">
     <div class="card"><div class="lbl">Children in each band</div><div class="bars">${BANDS.slice(1).filter(b => counts[b[0]] || (exp && Math.abs(b[0] - exp) <= 3)).map(b => `<div class="b"><span>${b[1]}${b[0] === exp ? " ★" : ""}</span><div class="t"><i style="width:${(counts[b[0]] || 0) / max * 100}%;background:${b[2]};box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)"></i></div><span>${counts[b[0]] || 0}</span></div>`).join("")}</div>${exp ? `<p class="hint">★ expected band for ${esc(S.cls.grade)}</p>` : ""}</div>
     <div class="card"><div class="lbl">Reading skills (latest tests, class average)</div><div class="bars">${Object.entries(skills).map(([s, v]) => { const a = Math.round(v.reduce((x, y) => x + y, 0) / v.length); return `<div class="b"><span>${SKILL_NAMES[s] || s}</span><div class="t"><i style="width:${a}%"></i></div><span>${a}%</span></div>`; }).join("") || `<p class="hint">Appears after the first tests.</p>`}</div></div>

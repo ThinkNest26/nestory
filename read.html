@@ -92,8 +92,20 @@ let me = null, ns = null, reads = [], testsTaken = 0, screen = "load", roster = 
 let prefs = JSON.parse(localStorage.getItem("ns_prefs") || '{"size":21,"easy":false}');
 
 function toast(t){ const el = $("#toast"); el.textContent = t; el.classList.add("show"); setTimeout(() => el.classList.remove("show"), 2000); }
-function speak(text){ try{ speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = "en-GB"; u.rate = .9; u.pitch = 1.05;
-  const v = speechSynthesis.getVoices().filter(v => /en-GB/i.test(v.lang)); const pick = v.find(x => /female|Serena|Kate|Martha|Libby|Sonia/i.test(x.name)) || v[0]; if(pick) u.voice = pick; speechSynthesis.speak(u); }catch(e){} }
+/* Voice: a soft, natural female voice. The best voice the device has is chosen: "Natural", "Enhanced" or "Premium" voices first. */
+const VOICE_ORDER = [/Sonia.*Natural/i, /Libby.*Natural/i, /Natural.*(Female|Sonia|Libby|Maisie|Aria|Jenny|Emma|Ava)/i, /(Aria|Jenny|Emma|Ava).*Natural/i, /Serena.*(Premium|Enhanced)/i, /Kate.*(Premium|Enhanced)/i, /Martha|Stephanie/i, /(Premium|Enhanced)/i,
+  /Serena/i, /Kate/i, /Google UK English Female/i, /Samantha/i, /Karen|Moira|Tessa|Fiona/i, /Female/i];
+let VOICE = null;
+function pickVoice(){
+  const all = (window.speechSynthesis && speechSynthesis.getVoices()) || [], en = all.filter(v => /^en/i.test(v.lang));
+  const male = /Daniel|Arthur|Oliver|Fred|Alex|Aaron|Rishi|Gordon|George|Ryan|Thomas|Guy|Male/i;
+  for(const re of VOICE_ORDER){ const v = en.find(x => re.test(x.name) && !male.test(x.name)); if(v) return VOICE = v; }
+  VOICE = en.find(v => /en-GB/i.test(v.lang) && !male.test(v.name)) || en.find(v => !male.test(v.name)) || en[0] || null;
+}
+try{ pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }catch(e){}
+function speak(text){ try{ speechSynthesis.cancel(); if(!VOICE) pickVoice(); const u = new SpeechSynthesisUtterance(text);
+  if(VOICE){ u.voice = VOICE; u.lang = VOICE.lang; } else u.lang = "en-GB";
+  u.rate = .86; u.pitch = 1; u.volume = 1; speechSynthesis.speak(u); }catch(e){} }
 const aBand = b => /^[AEIOU]/.test(bandName(b)) ? "an" : "a";
 function go(s){ screen = s; draw(); window.scrollTo(0, 0); }
 const head = (title, hi, back = "home") => `<div class="head"><img src="bird.png" alt=""><div><div class="hi">${hi}</div><h1>${title}</h1></div>${back ? `<button class="back" onclick="go('${back}')">‹ Back</button>` : ""}</div>`;
