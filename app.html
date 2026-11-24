@@ -20,7 +20,7 @@
   .brand{display:flex;align-items:center;gap:8px;font-family:"Fredoka";font-size:24px;color:var(--navy);font-weight:600;text-decoration:none}
   .brand img{height:40px}
   .tabs{display:flex;gap:4px;margin-left:12px;flex-wrap:wrap}
-  .tabs button{padding:9px 14px;border-radius:12px;font-weight:800;color:var(--muted)}
+  .tabs button{padding:8px 10px;border-radius:12px;font-weight:800;color:var(--muted);font-size:14px;white-space:nowrap}
   .tabs button.on{background:var(--sky);color:var(--navy)}
   .tabs .n{background:var(--blue2);color:#fff;border-radius:999px;padding:1px 7px;font-size:12px;margin-left:4px}
   .sp{flex:1}
@@ -200,17 +200,21 @@ const ageNow = r => ageAt(r);
 const ageAtTest = (r, t) => t.actual_age != null ? t.actual_age : ageAt(r, t.created_at);
 const gapOf = (r, t) => { const a = t ? ageAtTest(r, t) : null; return a == null ? null : t.reading_age - a; };
 /* Reading journey: the first test is the starting point; every later test or band move updates the reading age and colour. */
-function journey(id){
-  const r = reader(id), ev = [];
-  S.tests.filter(t => t.student_id === id && t.kind === "test").forEach(t => ev.push({ at: t.created_at, band: t.band, ra: t.reading_age, how: "Reading test" }));
-  S.moves.filter(m => m.student_id === id && m.reason !== "test" && m.from_band !== m.to_band && m.to_band).forEach(m => ev.push({ at: m.created_at, band: m.to_band, move: m, how: ({ check: "Band check", teacher: "Teacher", texts: "Texts" })[m.reason] || m.reason }));
+function buildJourney(tests, moves, birth){
+  const ev = [];
+  tests.forEach(t => ev.push({ at: t.at, band: t.band, ra: t.ra, how: "Reading test" }));
+  moves.filter(m => m.reason !== "test" && m.from !== m.to && m.to).forEach(m => ev.push({ at: m.at, band: m.to, how: ({ check: "Band check", teacher: "Teacher", texts: "Texts" })[m.reason] || m.reason }));
   ev.sort((a, b) => a.at < b.at ? -1 : 1);
   let ra = null; const out = [];
   ev.forEach(e => {
     if(e.ra == null){ const B = BANDS[e.band]; if(!B) return; if(ra == null) ra = B[4]; e.ra = e.band > (out.length ? out[out.length - 1].band : 0) ? Math.max(ra, B[4]) : Math.min(ra, B[5] - 1); }
-    ra = e.ra; e.aa = ageAt(r, e.at); out.push(e);
+    ra = e.ra; e.aa = ageAt({ birth_month: birth }, e.at); out.push(e);
   });
   return out;
+}
+function journey(id){
+  return buildJourney(S.tests.filter(t => t.student_id === id && t.kind === "test").map(t => ({ at: t.created_at, band: t.band, ra: t.reading_age })),
+    S.moves.filter(m => m.student_id === id).map(m => ({ at: m.created_at, from: m.from_band, to: m.to_band, reason: m.reason })), reader(id).birth_month);
 }
 const startOf = id => journey(id)[0] || null;
 const nowOf = id => journey(id).slice(-1)[0] || null;
@@ -280,10 +284,10 @@ function render(){
   if(S.mode === "newpass") return app.innerHTML = `<div class="login"><img src="logo.png" alt="Nestory"><div class="card"><h2>Choose a new password</h2>${S.error ? `<div class="err">${esc(S.error)}</div>` : ""}<label>New password</label><input type="password" id="np"><button class="btn" style="margin-top:12px;width:100%;justify-content:center" onclick="newPass()">Save password</button></div></div>`;
   const alerts = S.kids.filter(k => ["down", "ready", "test", "slow"].includes(statusOf(k.id)[0])).length;
   app.innerHTML = `<div class="top"><div class="in"><a class="brand" href="index.html"><img src="bird.png" alt="">Nestory</a>
-    <div class="tabs">${[["start", "🏠 Start here"], ["class", "📋 My class"], ["alerts", `🔔 Alerts${alerts ? `<span class="n">${alerts}</span>` : ""}`], ["progress", "📈 Progress"], ["children", "🧒 Children"]].map(([k, l]) => `<button class="${S.tab === k ? "on" : ""}" onclick="S.tab='${k}';S.kid=null;render()">${l}</button>`).join("")}</div>
+    <div class="tabs">${[["start", "🏠 Start here"], ...(S.schoolRole === "admin" ? [["school", "🏫 Whole school"]] : []), ["class", "📋 My class"], ["alerts", `🔔 Alerts${alerts ? `<span class="n">${alerts}</span>` : ""}`], ["progress", "📈 Progress"], ["children", "🧒 Children"]].map(([k, l]) => `<button class="${S.tab === k ? "on" : ""}" onclick="S.tab='${k}';S.kid=null;render()">${l}</button>`).join("")}</div>
     <span class="sp"></span>${S.classes && S.classes.length ? `<select style="width:auto" onchange="openClass(this.value)">${S.classes.map(c => `<option value="${c.id}" ${S.cls && S.cls.id === c.id ? "selected" : ""}>${esc(c.name)} · ${esc(c.grade)}</option>`).join("")}</select>` : ""}
     <button class="link hide-sm" onclick="signOut()">Sign out</button></div></div>
-    <div class="main">${S.error ? `<div class="err">⚠️ ${esc(S.error)} <button class="link" onclick="S.error='';render()">OK</button></div>` : ""}${!S.classes ? `<div class="card empty">Loading…</div>` : !S.cls && !["children", "start"].includes(S.tab) ? `<div class="card empty">🐣<br><br>Start with the 🏠 Start here tab to set up your class.</div>` : ({ start: startView, class: classView, alerts: alertsView, progress: progressView, children: childrenView })[S.tab]()}</div>
+    <div class="main">${S.error ? `<div class="err">⚠️ ${esc(S.error)} <button class="link" onclick="S.error='';render()">OK</button></div>` : ""}${!S.classes ? `<div class="card empty">Loading…</div>` : !S.cls && !["children", "start", "school"].includes(S.tab) ? `<div class="card empty">🐣<br><br>Start with the 🏠 Start here tab to set up your class.</div>` : ({ start: startView, school: schoolView, class: classView, alerts: alertsView, progress: progressView, children: childrenView })[S.tab]()}</div>
     ${S.kid ? kidModal() : ""}`;
 }
 function loginView(){
@@ -388,6 +392,83 @@ function childrenView(){
     <div><div class="card"><div class="lbl">Create a class</div><label>Class name</label><input id="cn" placeholder="For example Year 3 Blue"><label style="margin-top:10px">Year group</label><select id="cg">${GRADES.map(g => `<option>${g}</option>`).join("")}</select><button class="btn" style="margin-top:12px" onclick="addClass()">＋ Create class</button>
       <p class="hint" style="margin-top:10px">Classes you already have in WonderNest appear here automatically, with the same children.</p></div></div></div>`;
 }
+/* ---------- whole-school view (school admins) ---------- */
+async function loadSchoolOverview(){
+  const { data, error } = await db.rpc("ns_school_overview");
+  S.sch = error ? { error: errMsg(error) } : (data || { classes: [], children: [] }); render();
+}
+function schoolKids(){
+  const o = S.sch; return o.children.map(c => { const cls = o.classes.find(x => x.id === c.class_id) || {}, j = buildJourney(c.tests || [], c.moves || [], c.birth), exp = expectedBand(cls.grade);
+    return Object.assign({}, c, { cls, j, exp, start: j[0] || null, now: j[j.length - 1] || null, grew: j.length ? j[j.length - 1].ra - j[0].ra : null }); });
+}
+function bandBar(list){
+  const n = list.length || 1, counts = {}; list.forEach(k => { if(k.band) counts[k.band] = (counts[k.band] || 0) + 1; });
+  return `<div style="display:flex;height:16px;border-radius:8px;overflow:hidden;background:#F1F3F6;min-width:140px">${Object.keys(counts).map(Number).sort((a, b) => a - b).map(b => `<i title="${bandName(b)}: ${counts[b]}" style="width:${counts[b] / n * 100}%;background:${b ? bandColour(b) : "#F1F3F6"};box-shadow:inset -1px 0 0 #fff"></i>`).join("")}</div>`;
+}
+const pct = (a, b) => b ? Math.round(a / b * 100) + "%" : "–";
+const avgOf = a => a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length) : null;
+const signed = v => v == null ? "–" : (v > 0 ? "+" : "") + v + "m";
+function schoolView(){
+  if(!S.sch){ loadSchoolOverview(); return `<div class="card empty">Loading the whole school…</div>`; }
+  if(S.sch.error) return `<div class="card"><h2>🏫 Whole school</h2><p class="hint" style="margin-top:8px">The whole-school view needs a small update in Supabase (nestory-update-2.sql). ${esc(S.sch.error)}</p></div>`;
+  const K = schoolKids(), tested = K.filter(k => k.start), atExp = tested.filter(k => k.exp && k.band >= k.exp), withExp = tested.filter(k => k.exp);
+  const groups = {}; K.forEach(k => { const y = yearOf(k.cls.grade), key = y == null ? (k.cls.grade || "Other") : y < 1 ? (y === -1 ? "FS1" : "FS2") : "Year " + y; (groups[key] = groups[key] || []).push(k); });
+  const order = Object.keys(groups).sort((a, b) => (yearOf(groups[a][0].cls.grade) ?? 99) - (yearOf(groups[b][0].cls.grade) ?? 99));
+  const behind = tested.filter(k => k.exp && k.band <= k.exp - 2).sort((a, b) => (a.band - a.exp) - (b.band - b.exp));
+  const rowFor = (label, L, sub) => { const T = L.filter(k => k.start), E = T.filter(k => k.exp);
+    return `<tr><td><b>${esc(label)}</b>${sub ? `<br><span class="hint">${esc(sub)}</span>` : ""}</td><td>${L.length}</td><td>${pct(T.length, L.length)}</td><td>${pct(E.filter(k => k.band >= k.exp).length, E.length)}</td><td>${signed(avgOf(T.map(k => k.grew)))}</td><td>${L.reduce((a, k) => a + (k.reads || 0), 0)}</td><td>${bandBar(T)}</td></tr>`; };
+  return `<div class="row between" style="margin-bottom:14px"><h1>🏫 ${esc(S.school ? S.school.name : "Whole school")}</h1><div class="row"><button class="btn soft small" onclick="S.sch=null;render()">↻ Refresh</button><button class="btn soft small" onclick="exportSchoolCSV()">⬇️ Excel (CSV)</button></div></div>
+    <div class="stats"><div class="stat"><small>Children</small><b>${K.length}</b></div><div class="stat"><small>Tested</small><b>${pct(tested.length, K.length)}</b></div>
+      <div class="stat"><small>At or above expected band</small><b>${pct(atExp.length, withExp.length)}</b></div><div class="stat"><small>Average progress since start</small><b>${signed(avgOf(tested.map(k => k.grew)))}</b></div>
+      <div class="stat"><small>Texts read</small><b>${K.reduce((a, k) => a + (k.reads || 0), 0)}</b></div></div>
+    <div class="card" style="overflow-x:auto"><div class="lbl">By year group</div><table><tr><th>Year group</th><th>Children</th><th>Tested</th><th>At or above expected</th><th>Average progress</th><th>Texts read</th><th>Bands</th></tr>${order.map(g => rowFor(g, groups[g], `expected band: ${bandName(expectedBand(groups[g][0].cls.grade))}`)).join("")}</table></div>
+    <div class="card" style="overflow-x:auto"><div class="lbl">By class</div><table><tr><th>Class</th><th>Children</th><th>Tested</th><th>At or above expected</th><th>Average progress</th><th>Texts read</th><th>Bands</th></tr>${S.sch.classes.map(c => rowFor(c.name, K.filter(k => k.class_id === c.id), c.grade)).join("")}</table>
+      <p class="hint" style="margin-top:8px">Bands shows how many tested children are in each colour band. Progress is the change in reading age since each child's first test.</p></div>
+    <div class="card"><div class="lbl">Children two or more bands below expected (${behind.length})</div>${behind.length ? `<table><tr><th>Child</th><th>Class</th><th>Band now</th><th>Expected</th><th>Progress</th></tr>${behind.map(k => `<tr><td><b>${esc(k.name)}</b></td><td>${esc(k.cls.name)}</td><td>${chip(k.band)}</td><td>${chip(k.exp)}</td><td>${signed(k.grew)}</td></tr>`).join("")}</table>` : `<p class="hint">No children are two or more bands below expected. 🎉</p>`}</div>`;
+}
+function exportSchoolCSV(){
+  const K = schoolKids(), head = ["Class", "Year group", "Child", "Starting band", "Starting reading age", "Start date", "Band now", "Reading age now", "Progress (months)", "Expected band", "At or above expected", "Texts read"];
+  const rows = K.map(k => [k.cls.name, k.cls.grade, k.name, k.start ? bandName(k.start.band) : "", k.start ? fmtAge(k.start.ra) : "", k.start ? fmtDate(k.start.at) : "", k.band ? bandName(k.band) : "", k.now ? fmtAge(k.now.ra) : "", k.grew ?? "", k.exp ? bandName(k.exp) : "", k.start && k.exp ? (k.band >= k.exp ? "Yes" : "No") : "", k.reads || 0]);
+  const csv = [head, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv" })); a.download = `Nestory-whole-school.csv`; a.click();
+}
+
+/* ---------- one-page parent report ---------- */
+const LOGO_IMG = new Image(); LOGO_IMG.src = "logo.png";
+function logoData(){ try{ const c = document.createElement("canvas"); c.width = LOGO_IMG.naturalWidth; c.height = LOGO_IMG.naturalHeight; c.getContext("2d").drawImage(LOGO_IMG, 0, 0); return c.toDataURL("image/png"); }catch(e){ return "logo.png"; } }
+const HOME_TIPS = b => b <= 4 ? ["Share picture books every day and talk about the pictures together.", "Practise the sounds your child is learning in school (Read Write Inc.).", "When they read to you, help them point to each word and blend the sounds."]
+  : b <= 10 ? ["Listen to your child read for 10 minutes every day, and praise their effort.", "Ask questions as you read: who, what, where, when and why?", "Keep reading aloud to them too. Stories above their level build vocabulary."]
+  : b <= 16 ? ["Make time for reading for pleasure every day, including comics, magazines and non-fiction.", "Talk about books: favourite characters, predictions and new words.", "Visit the library together and let them choose."]
+  : ["Offer challenging and varied reading: novels, non-fiction, poetry and news.", "Discuss the writer's choices: why this word, why this ending?", "Encourage them to share their opinions about what they read and back them up."];
+function parentReport(id){
+  const k = S.kids.find(x => x.id === id), r = reader(id), j = journey(id), s0 = j[0], n0 = j[j.length - 1], t = lastTest(id), rd = S.reads.filter(x => x.student_id === id), last5 = rd.slice(-5);
+  if(!s0) return toast(`${k.first_name} hasn't taken the reading test yet`);
+  const gr = n0.ra - s0.ra, avg = last5.length ? Math.round(last5.reduce((a, x) => a + x.comp, 0) / last5.length) : null, base = location.href.replace(/[^/]*$/, "");
+  const box = (label, e, sub) => `<div class="b"><small>${label}</small><div class="dot" style="background:${bandColour(e.band)}"></div><b>${bandName(e.band)}</b><span>Reading age ${fmtAge(e.ra)}</span><em>${sub}</em></div>`;
+  const w = window.open("", "_blank"); if(!w) return toast("Please allow pop-ups to open the report");
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Reading report · ${esc(k.first_name)}</title><style>
+    @page{size:A4;margin:14mm}body{font-family:Arial,sans-serif;color:#2E3A4F;margin:0 auto;max-width:760px;font-size:13px}h1{font-size:24px;margin:0;color:#44546F}h2{font-size:15px;color:#44546F;margin:16px 0 6px;border-bottom:2px solid #DCE6F2;padding-bottom:3px}
+    .top{display:flex;align-items:center;gap:14px;border-bottom:3px solid #7FA8DA;padding-bottom:10px}.top img{height:54px}.top .sp{flex:1}.muted{color:#6B7689}
+    .boxes{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}.b{border:1px solid #DCE6F2;border-radius:12px;padding:10px;text-align:center}.b small{display:block;color:#6B7689;font-weight:bold;text-transform:uppercase;font-size:10px;letter-spacing:.05em}
+    .b .dot{width:34px;height:34px;border-radius:50%;margin:6px auto;box-shadow:0 0 0 1px rgba(0,0,0,.12)}.b b{display:block;font-size:17px}.b span{display:block}.b em{display:block;color:#6B7689;font-style:normal;font-size:11px}
+    .big{font-size:30px;font-weight:bold;color:#2D6248;margin-top:10px}.bars div{display:grid;grid-template-columns:140px 1fr 40px;gap:8px;align-items:center;margin:4px 0}.bars i{display:block;height:9px;border-radius:5px;background:#7FA8DA}.bars .t{background:#EEF2F7;border-radius:5px}
+    ul{margin:4px 0 0 18px;padding:0}li{margin:3px 0}.lines div{border-bottom:1px solid #C9D2DE;height:24px}.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    @media print{button{display:none}}</style></head><body>
+    <button onclick="print()" style="padding:8px 16px;font-size:14px;margin:10px 0">🖨️ Print or save as PDF</button>
+    <div class="top"><img src="${logoData()}" alt="Nestory"><div class="sp"><h1>Reading report: ${esc(k.first_name)}</h1><div class="muted">${esc(S.cls.name)} · ${esc(S.cls.grade)} · ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</div></div></div>
+    <h2>Reading journey</h2><div class="boxes">${box("Starting point", s0, fmtDate(s0.at))}${box("Now", n0, j.length > 1 ? fmtDate(n0.at) : "same as start")}
+      <div class="b"><small>Progress</small><div class="big">${gr > 0 ? "+" : ""}${gr} months</div><em>${gr > 0 ? "growth in reading age since the first test" : "since the first test"}</em>${r.birth_month ? `<em style="margin-top:6px">Age now: ${fmtAge(ageNow(r))}</em>` : ""}</div></div>
+    <h2>Reading age over time</h2>${svgReading(id)}
+    <div class="two"><div><h2>Reading skills (latest test)</h2>${t ? `<div class="bars">${Object.entries(t.skills || {}).map(([s, v]) => `<div><span>${SKILL_NAMES[s] || s}</span><span class="t"><i style="width:${v}%"></i></span><span>${v}%</span></div>`).join("")}</div>` : `<p class="muted">No test yet.</p>`}
+      <h2>Reading in school</h2><p><b>${rd.length}</b> ${rd.length === 1 ? "text" : "texts"} read in Nestory${avg != null ? `, with an average of <b>${avg}%</b> for understanding over the last ${last5.length}` : ""}.</p>
+      <p style="margin-top:6px"><b>Grammar ${esc(k.first_name)} is learning now:</b> ${esc(BANDS[r.band || n0.band][6])}.</p></div>
+      <div><h2>How you can help at home</h2><ul>${HOME_TIPS(r.band || n0.band).map(x => `<li>${esc(x)}</li>`).join("")}</ul>
+      <h2>Teacher's comment</h2><div class="lines"><div></div><div></div><div></div><div></div></div></div></div>
+    <p class="muted" style="margin-top:14px;font-size:11px">Colour bands show the level of books ${esc(k.first_name)} is reading. Reading age is an estimate from the Nestory reading test and band checks.</p>
+    </body></html>`);
+  w.document.close();
+}
+
 function svgReading(id){
   const J = journey(id); if(!J.length) return `<p class="hint">No tests yet.</p>`;
   const r = reader(id), pts = J.map(e => ({ d: new Date(e.at), ra: e.ra, aa: e.aa, band: e.band }));
@@ -402,7 +483,7 @@ function kidModal(){
   const k = S.kids.find(x => x.id === S.kid); if(!k) return "";
   const r = reader(k.id), t = lastTest(k.id), a = ageNow(r), mv = S.moves.filter(m => m.student_id === k.id).slice().reverse(), rd = S.reads.filter(x => x.student_id === k.id).slice().reverse(), pr = progressRate(k.id);
   return `<div class="modal" onclick="if(event.target===this){S.kid=null;render()}"><div class="box">
-    <div class="row between" style="margin-bottom:14px"><h1>${esc(k.picture)} ${esc(k.first_name)}</h1><button class="btn soft small" onclick="S.kid=null;render()">Close</button></div>
+    <div class="row between" style="margin-bottom:14px"><h1>${esc(k.picture)} ${esc(k.first_name)}</h1><div class="row"><button class="btn small" onclick="parentReport('${k.id}')">🖨️ Parent report</button><button class="btn soft small" onclick="S.kid=null;render()">Close</button></div></div>
     ${(() => { const s0 = startOf(k.id), n0 = nowOf(k.id), gr = grewOf(k.id), g = gapNow(k.id); return `<div class="stats"><div class="stat"><small>Starting point${s0 ? " · " + fmtDate(s0.at) : ""}</small><b style="font-size:18px">${s0 ? raTag(s0) : "Not tested"}</b></div><div class="stat"><small>Now</small><b style="font-size:18px">${n0 ? raTag(n0) : "–"}</b></div><div class="stat"><small>Progress since start</small><b>${gr == null ? "–" : (gr > 0 ? "+" : "") + gr + "m"}</b></div><div class="stat"><small>Actual age</small><b>${fmtAge(a)}</b></div><div class="stat"><small>Gap now</small><b>${g == null ? "–" : (g >= 0 ? "+" : "") + g + "m"}</b></div></div>`; })()}
     <div class="grid2"><div class="card"><div class="lbl">Reading age and band over time</div>${svgReading(k.id)}</div>
       <div class="card"><div class="lbl">Skills in the latest test</div>${t ? `<div class="bars">${Object.entries(t.skills || {}).map(([s, v]) => `<div class="b"><span>${SKILL_NAMES[s] || s}</span><div class="t"><i style="width:${v}%"></i></div><span>${v}%</span></div>`).join("")}</div><p class="hint">Test on ${fmtDate(t.created_at)} · ${t.score}% correct overall</p>` : `<p class="hint">No test yet.</p>`}</div></div>
