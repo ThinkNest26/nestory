@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nestory · Teacher</title>
+<link rel="icon" href="favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="content.js"></script>
+<style>
+  :root{--navy:#44546F;--ink:#2E3A4F;--blue:#7FA8DA;--blue2:#5F8FCB;--sky:#E3EDF8;--sky2:#F5F9FD;--green:#E2F1E8;--gink:#2D6248;--amber:#FFF4DE;--aink:#8A5A12;--rose:#FBEDE7;--rink:#9A4022;--muted:#6B7689;--line:#DCE6F2}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Nunito",system-ui,sans-serif;color:var(--ink);background:#F7F9FB;font-size:15px}
+  button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+  button{cursor:pointer;border:0;background:none}
+  h1,h2,h3{font-family:"Fredoka","Nunito",sans-serif;color:var(--navy);font-weight:600}
+  .top{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
+  .top .in{max-width:1180px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:16px}
+  .brand{display:flex;align-items:center;gap:8px;font-family:"Fredoka";font-size:24px;color:var(--navy);font-weight:600;text-decoration:none}
+  .brand img{height:40px}
+  .tabs{display:flex;gap:4px;margin-left:12px;flex-wrap:wrap}
+  .tabs button{padding:9px 14px;border-radius:12px;font-weight:800;color:var(--muted)}
+  .tabs button.on{background:var(--sky);color:var(--navy)}
+  .tabs .n{background:var(--blue2);color:#fff;border-radius:999px;padding:1px 7px;font-size:12px;margin-left:4px}
+  .sp{flex:1}
+  .main{max-width:1180px;margin:0 auto;padding:22px 20px 60px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:16px}
+  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .between{justify-content:space-between}
+  .btn{background:var(--navy);color:#fff;border-radius:12px;padding:10px 16px;font-weight:800;display:inline-flex;align-items:center;gap:6px}
+  .btn.soft{background:var(--sky);color:var(--navy)}
+  .btn.green{background:#C6E4D2;color:#24533D}
+  .btn.small{padding:6px 11px;font-size:13px;border-radius:10px}
+  .link{color:var(--blue2);font-weight:800}
+  input,select,textarea{border:1.5px solid var(--line);border-radius:10px;padding:9px 11px;background:#fff;width:100%}
+  label{font-weight:800;font-size:13px;color:var(--muted);display:block;margin-bottom:4px}
+  .lbl{font-weight:900;font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+  .hint{color:var(--muted);font-size:13px}
+  .chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px 3px 4px;font-weight:800;font-size:13px;color:var(--navy);background:#fff;border:1px solid var(--line)}
+  .chip i{width:16px;height:16px;border-radius:50%;box-shadow:0 0 0 1px rgba(0,0,0,.08)}
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:8px;border-bottom:2px solid var(--line);white-space:nowrap}
+  td{padding:10px 8px;border-bottom:1px solid #EEF2F7;vertical-align:middle}
+  tr.click{cursor:pointer}tr.click:hover td{background:var(--sky2)}
+  .gap{font-weight:900}.gap.up{color:var(--gink)}.gap.dn{color:var(--rink)}
+  .status{border-radius:999px;padding:3px 9px;font-size:12px;font-weight:800;white-space:nowrap}
+  .s-test{background:var(--sky);color:var(--navy)}.s-ready{background:var(--green);color:var(--gink)}.s-down{background:var(--rose);color:var(--rink)}.s-slow{background:var(--amber);color:var(--aink)}.s-ok{background:#F1F3F6;color:var(--muted)}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+  .stat{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px}
+  .stat b{display:block;font-family:"Fredoka";font-size:28px;color:var(--navy);font-weight:600}
+  .stat small{color:var(--muted);font-weight:800}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .bars .b{display:grid;grid-template-columns:120px 1fr 40px;gap:10px;align-items:center;margin-bottom:7px;font-weight:700;font-size:13px}
+  .bars .t{height:12px;background:#EEF2F7;border-radius:8px;overflow:hidden}.bars .t i{display:block;height:100%;border-radius:8px;background:var(--blue)}
+  .alert{display:flex;gap:12px;align-items:center;padding:12px;border-radius:14px;margin-bottom:8px}
+  .alert .tx{flex:1}
+  .err{background:var(--rose);color:var(--rink);border-radius:12px;padding:10px 14px;font-weight:700;margin-bottom:14px}
+  .login{max-width:420px;margin:60px auto}
+  .login img{width:230px;display:block;margin:0 auto 10px}
+  .empty{text-align:center;color:var(--muted);padding:34px}
+  .codebox{background:var(--sky);border-radius:14px;padding:12px 16px;display:inline-block}
+  .codebox b{font-family:"Fredoka";font-size:28px;letter-spacing:.12em;color:var(--navy);display:block}
+  .journey{border-left:3px solid var(--line);margin-left:8px;padding-left:16px}
+  .journey div{position:relative;margin-bottom:12px}
+  .journey div::before{content:"";position:absolute;left:-24px;top:3px;width:13px;height:13px;border-radius:50%;background:var(--c,#ccc);box-shadow:0 0 0 3px #fff,0 0 0 4px var(--line)}
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 18px;border-radius:999px;font-weight:800;opacity:0;transition:.3s;pointer-events:none;z-index:50}.toast.show{opacity:1}
+  .modal{position:fixed;inset:0;background:rgba(46,58,79,.4);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;z-index:40;overflow:auto}
+  .modal .box{background:#F7F9FB;border-radius:22px;max-width:900px;width:100%;padding:22px}
+  @media (max-width:860px){ .stats{grid-template-columns:1fr 1fr} .grid2{grid-template-columns:1fr} .tabs{margin-left:0} .hide-sm{display:none} }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+<script>
+/* ===== CONFIG: the shared ThinkNest Supabase project (public values) ===== */
+const SUPABASE_URL = "https://zmncqutjtgwxlvrdgwiq.supabase.co";
+const SUPABASE_KEY = "sb_publishable_blNQT3mGUzNadaRARkRpew_dq-tmD4J";
+const PICTURES = ["🐢","🐪","⭐","🍎","🚀","🐬","🌻","🦁","🎈","🐝","🍓","⚽"];
+const GRADES = ["FS1","FS2","Year 1","Year 2","Year 3","Year 4","Year 5","Year 6"];
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { storageKey: "nestory-teacher" } });
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmtDate = d => d ? new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" }) : "–";
+const chip = b => `<span class="chip"><i style="background:${bandColour(b)}"></i>${bandName(b)}</span>`;
+function toast(t){ const el = $("#toast"); el.textContent = t; el.classList.add("show"); setTimeout(() => el.classList.remove("show"), 2200); }
+const errMsg = e => (e && e.message) || "Something went wrong. Please try again.";
+
+const S = { user: null, mode: "signin", tab: "class", classes: null, cls: null, kids: [], readers: [], tests: [], reads: [], moves: [], kid: null, error: "" };
+
+/* ---------- sign in (same account as WonderNest) ---------- */
+async function init(){
+  const { data: { session } } = await db.auth.getSession();
+  S.user = session && !session.user.is_anonymous ? session.user : null;
+  db.auth.onAuthStateChange((ev, s) => { if(ev === "PASSWORD_RECOVERY"){ S.mode = "newpass"; render(); } });
+  if(location.hash.includes("type=recovery")) S.mode = "newpass";
+  if(S.user && S.mode !== "newpass") return loadClasses();
+  render();
+}
+async function signIn(){
+  S.error = "";
+  const { data, error } = await db.auth.signInWithPassword({ email: $("#em").value.trim(), password: $("#pw").value });
+  if(error){ S.error = error.message === "Invalid login credentials" ? "That email or password isn't right. Use the same account as WonderNest." : errMsg(error); return render(); }
+  S.user = data.session.user; loadClasses();
+}
+async function forgot(){
+  const em = $("#em").value.trim(); if(!em){ S.error = "Type your email first."; return render(); }
+  await db.auth.resetPasswordForEmail(em, { redirectTo: location.origin + location.pathname });
+  toast("Check your email for a reset link");
+}
+async function newPass(){
+  const p = $("#np").value; if(p.length < 8){ S.error = "Use at least 8 characters."; return render(); }
+  const { error } = await db.auth.updateUser({ password: p }); if(error){ S.error = errMsg(error); return render(); }
+  S.mode = "signin"; history.replaceState(null, "", location.pathname); toast("Password changed ✓"); init();
+}
+async function signOut(){ await db.auth.signOut(); S.user = null; S.classes = null; render(); }
+
+/* ---------- data ---------- */
+async function loadClasses(){
+  const { data, error } = await db.from("classes").select("id, name, grade, code").order("created_at");
+  if(error){ S.error = errMsg(error); }
+  S.classes = data || [];
+  const keep = localStorage.getItem("ns_class");
+  const c = S.classes.find(x => x.id === keep) || S.classes[0];
+  if(c) return openClass(c.id);
+  S.tab = "children"; render();
+}
+async function openClass(id){
+  S.cls = S.classes.find(c => c.id === id); localStorage.setItem("ns_class", id); S.kid = null;
+  const [k, r, t, rd, m] = await Promise.all([
+    db.from("students").select("id, first_name, picture").eq("class_id", id).order("first_name"),
+    db.from("ns_readers").select("*").eq("class_id", id),
+    db.from("ns_tests").select("*").eq("class_id", id).order("created_at"),
+    db.from("ns_reads").select("id, student_id, band, text_id, comp, grammar, score, seconds, created_at").eq("class_id", id).order("created_at"),
+    db.from("ns_moves").select("*").eq("class_id", id).order("created_at")]);
+  S.kids = k.data || []; S.readers = r.data || []; S.tests = t.data || []; S.reads = rd.data || []; S.moves = m.data || [];
+  render();
+}
+const reader = id => S.readers.find(r => r.student_id === id) || { band: 0, retest: true, rwi_group: "", birth_month: null, pending: null };
+const testsOf = id => S.tests.filter(t => t.student_id === id && t.kind === "test");
+const lastTest = id => testsOf(id).slice(-1)[0];
+const ageAt = (r, when) => { if(!r.birth_month) return null; const b = new Date(r.birth_month), n = when ? new Date(when) : new Date(); return (n.getFullYear() - b.getFullYear()) * 12 + n.getMonth() - b.getMonth(); };
+const ageNow = r => ageAt(r);
+const ageAtTest = (r, t) => t.actual_age != null ? t.actual_age : ageAt(r, t.created_at);
+const gapOf = (r, t) => { const a = t ? ageAtTest(r, t) : null; return a == null ? null : t.reading_age - a; };
+function sinceMove(id){ const mv = S.moves.filter(m => m.student_id === id).slice(-1)[0]; return mv ? mv.created_at : ""; }
+function readsInBand(id){ const r = reader(id), since = sinceMove(id); return S.reads.filter(x => x.student_id === id && x.band === r.band && x.created_at > since); }
+function avgLast(id, n){ const rs = readsInBand(id).slice(-n); return rs.length ? Math.round(rs.reduce((a, x) => a + x.score, 0) / rs.length) : null; }
+function progressRate(id){ const ts = testsOf(id); if(ts.length < 2) return null; const a = ts[ts.length - 2], b = ts[ts.length - 1];
+  const months = (new Date(b.created_at) - new Date(a.created_at)) / (30.44 * 864e5); if(months < 1) return null; return Math.round((b.reading_age - a.reading_age) / months * 10) / 10; }
+function statusOf(id){
+  const r = reader(id), rs = readsInBand(id).slice(-5);
+  if(r.pending) return ["down", `Move to ${bandName(r.pending.to)}?`];
+  if(r.retest || !r.band) return ["test", r.band ? "Retest set" : "Not tested"];
+  if(rs.length === 5 && rs.reduce((a, x) => a + x.score, 0) / 5 >= 80 && r.band < 20) return ["ready", "Ready for band check"];
+  const pr = progressRate(id); if(pr !== null && pr < 1) return ["slow", "Progress slowed"];
+  return ["ok", "On track"];
+}
+
+/* ---------- teacher actions ---------- */
+async function setBand(id, band, note){
+  const { data, error } = await db.rpc("ns_set_band", { p_student: id, p_band: band, p_note: note || "" });
+  if(error){ S.error = errMsg(error); return render(); }
+  const keep = S.kid; toast(band === null ? "Kept in band ✓" : `Moved to ${bandName(band)} ✓`); await openClass(S.cls.id); S.kid = keep; render();
+}
+async function setInfo(id, patch){
+  const r = reader(id);
+  const { error } = await db.rpc("ns_set_info", { p_student: id, p_rwi: patch.rwi ?? null, p_birth: patch.birth ?? null, p_retest: patch.retest ?? null });
+  if(error){ S.error = errMsg(error); return render(); }
+  toast(patch.retest ? "Reading test set ✓ The child will see it when they sign in" : "Saved ✓"); await openClass(S.cls.id); S.kid = id; render();
+}
+async function retestAll(){ if(!confirm("Ask every child in this class to take the reading test again?")) return; for(const k of S.kids) await db.rpc("ns_set_info", { p_student: k.id, p_rwi: null, p_birth: null, p_retest: true }); toast("Reading test set for the class ✓"); openClass(S.cls.id); }
+async function addClass(){
+  const name = $("#cn").value.trim(), grade = $("#cg").value; if(!name) return;
+  const { data, error } = await db.from("classes").insert({ name, grade }).select("id, name, grade, code").single();
+  if(error){ S.error = errMsg(error); return render(); }
+  toast("Class created ✓"); S.classes.push(data); S.tab = "children"; openClass(data.id);
+}
+async function addKids(){
+  const names = $("#nk").value.split(/\n|,/).map(n => n.trim()).filter(Boolean).slice(0, 60); if(!names.length) return;
+  const used = S.kids.map(k => k.picture);
+  const rows = names.map(n => { const free = PICTURES.filter(p => !used.includes(p)), pool = free.length ? free : PICTURES, pic = pool[Math.floor(Math.random() * pool.length)]; used.push(pic); return { class_id: S.cls.id, first_name: n.slice(0, 40), picture: pic }; });
+  const { error } = await db.from("students").insert(rows); if(error){ S.error = errMsg(error); return render(); }
+  toast(`${rows.length} added ✓`); openClass(S.cls.id);
+}
+function exportCSV(){
+  const head = ["Child", "Band", "Band name", "Estimated reading age (months)", "Actual age (months)", "Gap (months)", "Last test", "Texts read", "Average last 5 (%)", "Progress rate", "RWI group", "Status"];
+  const rows = S.kids.map(k => { const r = reader(k.id), t = lastTest(k.id), a = ageNow(r);
+    return [k.first_name, r.band || "", bandName(r.band), t ? t.reading_age : "", a ?? "", gapOf(r, t) ?? "", t ? fmtDate(t.created_at) : "", S.reads.filter(x => x.student_id === k.id).length, avgLast(k.id, 5) ?? "", progressRate(k.id) ?? "", r.rwi_group, statusOf(k.id)[1]]; });
+  const csv = [head, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv" })); a.download = `Nestory-${S.cls.name}.csv`; a.click();
+}
+
+/* ---------- views ---------- */
+function render(){
+  const app = $("#app");
+  if(!S.user) return app.innerHTML = loginView();
+  if(S.mode === "newpass") return app.innerHTML = `<div class="login"><img src="logo.png" alt="Nestory"><div class="card"><h2>Choose a new password</h2>${S.error ? `<div class="err">${esc(S.error)}</div>` : ""}<label>New password</label><input type="password" id="np"><button class="btn" style="margin-top:12px;width:100%;justify-content:center" onclick="newPass()">Save password</button></div></div>`;
+  const alerts = S.kids.filter(k => ["down", "ready", "test", "slow"].includes(statusOf(k.id)[0])).length;
+  app.innerHTML = `<div class="top"><div class="in"><a class="brand" href="index.html"><img src="bird.png" alt="">Nestory</a>
+    <div class="tabs">${[["class", "📋 My class"], ["alerts", `🔔 Alerts${alerts ? `<span class="n">${alerts}</span>` : ""}`], ["progress", "📈 Progress"], ["children", "🧒 Children"]].map(([k, l]) => `<button class="${S.tab === k ? "on" : ""}" onclick="S.tab='${k}';S.kid=null;render()">${l}</button>`).join("")}</div>
+    <span class="sp"></span>${S.classes && S.classes.length ? `<select style="width:auto" onchange="openClass(this.value)">${S.classes.map(c => `<option value="${c.id}" ${S.cls && S.cls.id === c.id ? "selected" : ""}>${esc(c.name)} · ${esc(c.grade)}</option>`).join("")}</select>` : ""}
+    <button class="link hide-sm" onclick="signOut()">Sign out</button></div></div>
+    <div class="main">${S.error ? `<div class="err">⚠️ ${esc(S.error)} <button class="link" onclick="S.error='';render()">OK</button></div>` : ""}${!S.classes ? `<div class="card empty">Loading…</div>` : !S.cls && S.tab !== "children" ? `<div class="card empty">🐣<br><br>Create your first class in the Children tab.</div>` : ({ class: classView, alerts: alertsView, progress: progressView, children: childrenView })[S.tab]()}</div>
+    ${S.kid ? kidModal() : ""}`;
+}
+function loginView(){
+  return `<div class="login"><img src="logo.png" alt="Nestory"><div class="card"><h2 style="margin-bottom:4px">Teacher sign in</h2><p class="hint" style="margin-bottom:14px">Use the same email and password as WonderNest.</p>
+    ${S.error ? `<div class="err">${esc(S.error)}</div>` : ""}<label>Email</label><input id="em" type="email" autocomplete="username"><label style="margin-top:10px">Password</label><input id="pw" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')signIn()">
+    <button class="btn" style="margin-top:14px;width:100%;justify-content:center" onclick="signIn()">Sign in</button>
+    <p class="hint" style="margin-top:12px;text-align:center"><button class="link" onclick="forgot()">Forgot your password?</button> · New to ThinkNest? <a class="link" href="https://wondernest.thinknest.education">Create an account</a></p></div>
+    <p class="hint" style="text-align:center">Children sign in at <a class="link" href="read.html">the readers' page</a> with their class code.</p></div>`;
+}
+function classView(){
+  const K = S.kids; if(!K.length) return `<div class="card empty">No children in ${esc(S.cls.name)} yet. Add them in the Children tab.</div>`;
+  const tested = K.filter(k => reader(k.id).band), withAge = K.filter(k => gapOf(reader(k.id), lastTest(k.id)) != null);
+  const atExp = withAge.filter(k => gapOf(reader(k.id), lastTest(k.id)) >= 0).length;
+  const avgGap = withAge.length ? Math.round(withAge.reduce((a, k) => a + gapOf(reader(k.id), lastTest(k.id)), 0) / withAge.length) : null;
+  return `<div class="row between" style="margin-bottom:14px"><h1>${esc(S.cls.name)}</h1><div class="row"><button class="btn soft small" onclick="retestAll()">🗺️ Set reading test for everyone</button><button class="btn soft small" onclick="exportCSV()">⬇️ Excel (CSV)</button></div></div>
+  <div class="stats"><div class="stat"><small>Tested</small><b>${tested.length}/${K.length}</b></div><div class="stat"><small>At or above actual age</small><b>${withAge.length ? Math.round(atExp / withAge.length * 100) + "%" : "–"}</b></div>
+    <div class="stat"><small>Average gap</small><b>${avgGap == null ? "–" : (avgGap >= 0 ? "+" : "") + avgGap + "m"}</b></div><div class="stat"><small>Texts read</small><b>${S.reads.length}</b></div></div>
+  <div class="card" style="overflow-x:auto"><table><tr><th>Child</th><th>Band</th><th>Reading age</th><th class="hide-sm">Actual age</th><th>Gap</th><th class="hide-sm">Last test</th><th class="hide-sm">Texts</th><th class="hide-sm">Last 5</th><th>Status</th></tr>
+  ${K.map(k => { const r = reader(k.id), t = lastTest(k.id), a = ageNow(r), g = gapOf(r, t), st = statusOf(k.id), avg = avgLast(k.id, 5);
+    return `<tr class="click" onclick="S.kid='${k.id}';render()"><td><b>${esc(k.picture)} ${esc(k.first_name)}</b>${r.rwi_group ? `<br><span class="hint">RWI ${esc(r.rwi_group)}</span>` : ""}</td><td>${r.band ? chip(r.band) : `<span class="hint">–</span>`}</td><td>${t ? fmtAge(t.reading_age) : "–"}</td><td class="hide-sm">${fmtAge(a)}</td>
+      <td>${g == null ? `<span class="hint">${a == null && t ? "add birth month" : "–"}</span>` : `<span class="gap ${g >= 0 ? "up" : "dn"}">${g >= 0 ? "+" : ""}${g}m</span>`}</td><td class="hide-sm">${t ? fmtDate(t.created_at) : "–"}</td><td class="hide-sm">${readsInBand(k.id).length}</td><td class="hide-sm">${avg == null ? "–" : avg + "%"}</td><td><span class="status s-${st[0]}">${st[1]}</span></td></tr>`; }).join("")}</table>
+  <p class="hint" style="margin-top:10px">Tap a child to see their profile, move their band, set their RWI group or birth month, or ask them to retake the test.</p></div>`;
+}
+function alertsView(){
+  const by = t => S.kids.filter(k => statusOf(k.id)[0] === t);
+  const sec = (t, title, sub, item) => { const L = by(t); return L.length ? `<div class="card"><div class="lbl">${title} (${L.length})</div>${sub ? `<p class="hint" style="margin:-6px 0 10px">${sub}</p>` : ""}${L.map(item).join("")}</div>` : ""; };
+  const html = sec("down", "Waiting for you: move down?", "These children scored below 50% on average over their last 4 texts. Nothing changes until you decide.", k => { const r = reader(k.id);
+      return `<div class="alert" style="background:var(--rose)"><div class="tx"><b>${esc(k.picture)} ${esc(k.first_name)}</b> · ${chip(r.band)} → ${chip(r.pending.to)}<br><span class="hint">Last 4 texts average ${avgLast(k.id, 4)}%</span></div><button class="btn small soft" onclick="setBand('${k.id}', null, 'kept in band')">Keep in ${bandName(r.band)}</button><button class="btn small" onclick="setBand('${k.id}', ${r.pending.to}, 'moved down after texts')">Move to ${bandName(r.pending.to)}</button></div>`; })
+    + sec("ready", "Ready to move up", "80% or more over their last 5 texts. They will see a band check on their home page; passing it (70%+) moves them up.", k => `<div class="alert" style="background:var(--green)"><div class="tx"><b>${esc(k.picture)} ${esc(k.first_name)}</b> · ${chip(reader(k.id).band)} · last 5 average ${avgLast(k.id, 5)}%</div><button class="btn small soft" onclick="S.kid='${k.id}';render()">Profile</button></div>`)
+    + sec("test", "Reading test to take", "These children will see the reading quest when they sign in.", k => `<div class="alert" style="background:var(--sky)"><div class="tx"><b>${esc(k.picture)} ${esc(k.first_name)}</b> · ${reader(k.id).band ? "retest set" : "not tested yet"}</div></div>`)
+    + sec("slow", "Progress slowed", "Reading age grew more slowly than time passed between the last two tests.", k => `<div class="alert" style="background:var(--amber)"><div class="tx"><b>${esc(k.picture)} ${esc(k.first_name)}</b> · progress rate ${progressRate(k.id)}</div><button class="btn small soft" onclick="S.kid='${k.id}';render()">Profile</button></div>`);
+  return `<h1 style="margin-bottom:14px">Alerts · ${esc(S.cls.name)}</h1>` + (html || `<div class="card empty">🎉<br><br>Nothing needs you right now.</div>`);
+}
+function progressView(){
+  const K = S.kids, counts = {}; K.forEach(k => { const b = reader(k.id).band; if(b) counts[b] = (counts[b] || 0) + 1; });
+  const max = Math.max(1, ...Object.values(counts)), exp = expectedBand(S.cls.grade);
+  const rates = K.map(k => [k, progressRate(k.id)]).filter(x => x[1] !== null).sort((a, b) => b[1] - a[1]);
+  const skills = {}; K.forEach(k => { const t = lastTest(k.id); if(t) Object.entries(t.skills || {}).forEach(([s, v]) => (skills[s] = skills[s] || []).push(v)); });
+  const terms = {}; S.tests.filter(t => t.kind === "test").forEach(t => { const g = gapOf(reader(t.student_id), t); if(g == null) return; const d = new Date(t.created_at), y = d.getMonth() >= 7 ? d.getFullYear() : d.getFullYear() - 1, key = `${y}/${String(y + 1).slice(2)} ` + (d.getMonth() >= 7 ? "Term 1" : d.getMonth() < 3 ? "Term 2" : "Term 3"); (terms[key] = terms[key] || []).push(g); });
+  return `<h1 style="margin-bottom:14px">Progress · ${esc(S.cls.name)}</h1><div class="grid2">
+    <div class="card"><div class="lbl">Children in each band</div><div class="bars">${BANDS.slice(1).filter(b => counts[b[0]] || (exp && Math.abs(b[0] - exp) <= 3)).map(b => `<div class="b"><span>${b[1]}${b[0] === exp ? " ★" : ""}</span><div class="t"><i style="width:${(counts[b[0]] || 0) / max * 100}%;background:${b[2]};box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)"></i></div><span>${counts[b[0]] || 0}</span></div>`).join("")}</div>${exp ? `<p class="hint">★ expected band for ${esc(S.cls.grade)}</p>` : ""}</div>
+    <div class="card"><div class="lbl">Reading skills (latest tests, class average)</div><div class="bars">${Object.entries(skills).map(([s, v]) => { const a = Math.round(v.reduce((x, y) => x + y, 0) / v.length); return `<div class="b"><span>${SKILL_NAMES[s] || s}</span><div class="t"><i style="width:${a}%"></i></div><span>${a}%</span></div>`; }).join("") || `<p class="hint">Appears after the first tests.</p>`}</div></div>
+    <div class="card"><div class="lbl">Progress rate between the last two tests</div>${rates.length ? `<div class="bars">${rates.map(([k, r]) => `<div class="b"><span>${esc(k.first_name)}</span><div class="t"><i style="width:${Math.min(100, r / 2 * 100)}%;background:${r >= 1 ? "#8FC9A8" : "#F1C27D"}"></i></div><span>${r}</span></div>`).join("")}</div><p class="hint">1.0 = expected progress · above 1.0 = accelerated · below 1.0 = slower than expected</p>` : `<p class="hint">Appears once children have taken two tests at least a month apart.</p>`}</div>
+    <div class="card"><div class="lbl">Average gap (reading age − actual age) by term</div>${Object.keys(terms).length ? `<div class="bars">${Object.entries(terms).sort().map(([t, v]) => { const a = Math.round(v.reduce((x, y) => x + y, 0) / v.length); return `<div class="b"><span>${t}</span><div class="t"><i style="width:${Math.min(100, Math.abs(a) / 24 * 100)}%;background:${a >= 0 ? "#8FC9A8" : "#E6B8A8"}"></i></div><span>${a >= 0 ? "+" : ""}${a}m</span></div>`; }).join("")}</div>` : `<p class="hint">Add birth months to see reading age compared with actual age.</p>`}</div></div>`;
+}
+function childrenView(){
+  return `<div class="grid2"><div>${S.cls ? `<div class="card"><div class="lbl">${esc(S.cls.name)} · class code for children</div><div class="codebox"><b>${esc(S.cls.code)}</b></div>
+      <p class="hint" style="margin-top:10px">Children go to <b>nestory.thinknest.education/read.html</b>, type this code, tap their name and their secret picture. It's the same code and picture as WonderNest.</p>
+      <div style="margin-top:14px">${S.kids.map(k => `<span class="chip" style="margin:0 6px 6px 0;padding:5px 12px">${esc(k.picture)} ${esc(k.first_name)}</span>`).join("") || `<p class="hint">No children yet.</p>`}</div></div>
+    <div class="card"><div class="lbl">Add children to ${esc(S.cls.name)}</div><textarea id="nk" rows="5" placeholder="One first name per line"></textarea><button class="btn" style="margin-top:10px" onclick="addKids()">＋ Add children</button><p class="hint" style="margin-top:8px">Each child gets a secret picture. Show it to them before they sign in.</p></div>` : ""}</div>
+    <div><div class="card"><div class="lbl">Create a class</div><label>Class name</label><input id="cn" placeholder="For example Year 3 Blue"><label style="margin-top:10px">Year group</label><select id="cg">${GRADES.map(g => `<option>${g}</option>`).join("")}</select><button class="btn" style="margin-top:12px" onclick="addClass()">＋ Create class</button>
+      <p class="hint" style="margin-top:10px">Classes you already have in WonderNest appear here automatically, with the same children.</p></div></div></div>`;
+}
+function svgReading(id){
+  const ts = testsOf(id); if(!ts.length) return `<p class="hint">No tests yet.</p>`;
+  const r = reader(id), pts = ts.map(t => ({ d: new Date(t.created_at), ra: t.reading_age, aa: ageAtTest(r, t) }));
+  const vals = pts.flatMap(p => [p.ra, p.aa]).filter(v => v != null), lo = Math.min(...vals) - 6, hi = Math.max(...vals) + 6;
+  const W = 560, H = 220, x = i => 50 + (pts.length === 1 ? (W - 80) / 2 : i * (W - 80) / (pts.length - 1)), y = v => H - 30 - (v - lo) / (hi - lo) * (H - 50);
+  const line = (k, col, dash) => { const p = pts.map((q, i) => q[k] == null ? null : `${x(i)},${y(q[k])}`).filter(Boolean); return p.length > 1 ? `<polyline fill="none" stroke="${col}" stroke-width="3" ${dash ? 'stroke-dasharray="6 5"' : ""} points="${p.join(" ")}"/>` : ""; };
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%">${[lo, (lo + hi) / 2, hi].map(v => `<line x1="45" x2="${W - 20}" y1="${y(v)}" y2="${y(v)}" stroke="#EEF2F7"/><text x="4" y="${y(v) + 4}" font-size="11" fill="#6B7689">${fmtAge(Math.round(v))}</text>`).join("")}
+    ${line("aa", "#C9D2DE", true)}${pts.map((p, i) => p.aa == null ? "" : `<circle cx="${x(i)}" cy="${y(p.aa)}" r="4" fill="#C9D2DE"/>`).join("")}${line("ra", "#5F8FCB")}${pts.map((p, i) => `<circle cx="${x(i)}" cy="${y(p.ra)}" r="5" fill="#fff" stroke="#5F8FCB" stroke-width="3"/><text x="${x(i)}" y="${H - 8}" font-size="11" fill="#6B7689" text-anchor="middle">${fmtDate(p.d)}</text>`).join("")}</svg>
+    <p class="hint"><span style="color:#5F8FCB;font-weight:900">━</span> Estimated reading age ${r.birth_month ? `<span style="color:#9AA5B5;font-weight:900;margin-left:10px">┅</span> Actual age` : "· add a birth month to compare with actual age"}</p>`;
+}
+function kidModal(){
+  const k = S.kids.find(x => x.id === S.kid); if(!k) return "";
+  const r = reader(k.id), t = lastTest(k.id), a = ageNow(r), mv = S.moves.filter(m => m.student_id === k.id).slice().reverse(), rd = S.reads.filter(x => x.student_id === k.id).slice().reverse(), pr = progressRate(k.id);
+  return `<div class="modal" onclick="if(event.target===this){S.kid=null;render()}"><div class="box">
+    <div class="row between" style="margin-bottom:14px"><h1>${esc(k.picture)} ${esc(k.first_name)}</h1><button class="btn soft small" onclick="S.kid=null;render()">Close</button></div>
+    <div class="stats"><div class="stat"><small>Band</small><b style="font-size:22px">${r.band ? chip(r.band) : "–"}</b></div><div class="stat"><small>Reading age</small><b>${t ? fmtAge(t.reading_age) : "–"}</b></div><div class="stat"><small>Actual age</small><b>${fmtAge(a)}</b></div><div class="stat"><small>Gap at last test</small><b>${gapOf(r, t) == null ? "–" : (gapOf(r, t) >= 0 ? "+" : "") + gapOf(r, t) + "m"}</b></div><div class="stat"><small>Progress rate</small><b>${pr ?? "–"}</b></div></div>
+    <div class="grid2"><div class="card"><div class="lbl">Reading age over time</div>${svgReading(k.id)}</div>
+      <div class="card"><div class="lbl">Skills in the latest test</div>${t ? `<div class="bars">${Object.entries(t.skills || {}).map(([s, v]) => `<div class="b"><span>${SKILL_NAMES[s] || s}</span><div class="t"><i style="width:${v}%"></i></div><span>${v}%</span></div>`).join("")}</div><p class="hint">Test on ${fmtDate(t.created_at)} · ${t.score}% correct overall</p>` : `<p class="hint">No test yet.</p>`}</div></div>
+    <div class="grid2"><div class="card"><div class="lbl">Settings</div>
+        <label>Move to a band</label><div class="row"><select id="mb" style="flex:1">${BANDS.slice(1).map(b => `<option value="${b[0]}" ${b[0] === r.band ? "selected" : ""}>${b[0]}. ${b[1]} (${b[3]})</option>`).join("")}</select><button class="btn small" onclick="setBand('${k.id}', +$('#mb').value, $('#mn').value || 'teacher choice')">Move</button></div>
+        <input id="mn" placeholder="Reason (optional)" style="margin-top:6px">
+        <label style="margin-top:12px">RWI group</label><select onchange="setInfo('${k.id}', { rwi: this.value })">${RWI_GROUPS.map(g => `<option value="${g}" ${g === r.rwi_group ? "selected" : ""}>${g || "Not on RWI"}</option>`).join("")}</select>
+        ${r.rwi_group && RWI_BAND[r.rwi_group] && RWI_BAND[r.rwi_group] !== r.band ? `<p class="hint" style="margin-top:4px">RWI ${esc(r.rwi_group)} matches ${chip(RWI_BAND[r.rwi_group])} <button class="link" onclick="setBand('${k.id}', ${RWI_BAND[r.rwi_group]}, 'RWI group')">Use it</button></p>` : ""}
+        <label style="margin-top:12px">Birth month (for reading age gap)</label><input type="month" value="${r.birth_month ? String(r.birth_month).slice(0, 7) : ""}" onchange="if(this.value)setInfo('${k.id}', { birth: this.value + '-01' })">
+        <button class="btn soft" style="margin-top:14px" onclick="setInfo('${k.id}', { retest: true })" ${r.retest ? "disabled" : ""}>🗺️ ${r.retest ? "Reading test is set" : "Ask to retake the reading test"}</button></div>
+      <div class="card"><div class="lbl">Band journey</div>${mv.length ? `<div class="journey">${mv.slice(0, 12).map(m => `<div style="--c:${bandColour(m.to_band)}"><b>${m.from_band === m.to_band ? `Stayed in ${bandName(m.to_band)}` : `${m.from_band ? bandName(m.from_band) + " → " : ""}${bandName(m.to_band)}`}</b> <span class="hint">· ${fmtDate(m.created_at)}</span><br><span class="hint">${({ test: "Reading test", check: "Band check", teacher: "Teacher", texts: "Texts" })[m.reason] || esc(m.reason)}${m.note ? ": " + esc(m.note) : ""}</span></div>`).join("")}</div>` : `<p class="hint">No moves yet.</p>`}</div></div>
+    <div class="card"><div class="lbl">Texts read (${rd.length})</div>${rd.length ? `<table><tr><th>Text</th><th>Band</th><th>Understanding</th><th>Grammar</th><th>Date</th></tr>${rd.slice(0, 15).map(x => `<tr><td>${esc((TEXTS.find(t => t.id === x.text_id) || {}).title || x.text_id)}</td><td>${chip(x.band)}</td><td>${x.comp}%</td><td>${x.grammar}%</td><td>${fmtDate(x.created_at)}</td></tr>`).join("")}</table>` : `<p class="hint">No texts read yet.</p>`}</div>
+  </div></div>`;
+}
+init();
+</script>
+</body>
+</html>

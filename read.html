@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nestory · My reading</title>
+<link rel="icon" href="favicon.png">
+<link rel="apple-touch-icon" href="favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@600;700;800;900&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="content.js"></script>
+<style>
+  :root{--navy:#44546F;--ink:#2E3A4F;--blue:#7FA8DA;--blue2:#5F8FCB;--sky:#E3EDF8;--sky2:#F5F9FD;--green:#E2F1E8;--green2:#8FC9A8;--gink:#2D6248;--muted:#6B7689;--line:#DCE6F2}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Nunito",system-ui,sans-serif;color:var(--ink);background:#F7F9FB;min-height:100vh;-webkit-tap-highlight-color:transparent}
+  button{font-family:inherit;border:0;cursor:pointer;background:none;color:inherit}
+  h1,h2,h3{font-family:"Fredoka","Nunito",sans-serif;color:var(--navy);font-weight:600}
+  .wrap{max-width:760px;margin:0 auto;min-height:100vh;padding-bottom:40px}
+  .head{background:var(--sky);padding:18px 20px 20px;border-radius:0 0 28px 28px;display:flex;align-items:center;gap:14px;position:relative}
+  .head img{width:64px}
+  .head .hi{font-weight:800;color:var(--muted);font-size:14px}
+  .head h1{font-size:26px;line-height:1.1}
+  .head .back{position:absolute;top:16px;right:16px;background:#fff;border:1.5px solid var(--line);border-radius:999px;padding:7px 14px;font-weight:800;font-size:14px;color:var(--navy)}
+  .body{padding:18px 16px}
+  .card{background:#fff;border-radius:22px;padding:18px;margin-bottom:14px;box-shadow:0 1px 3px rgba(36,69,111,.08)}
+  .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border-radius:18px;padding:16px;font-weight:900;font-size:19px;background:#C8DBF1;color:#1F3D63}
+  .btn.green{background:#C6E4D2;color:#24533D}
+  .btn.ghost{background:#fff;border:2px solid var(--line);color:var(--navy)}
+  .btn:disabled{opacity:.5}
+  .big{font-size:24px;text-align:center;margin:10px 0 6px}
+  .sub{text-align:center;color:var(--muted);font-weight:700;margin-bottom:16px}
+  input.code{width:100%;font-size:30px;text-align:center;letter-spacing:.2em;font-weight:900;border:2px solid var(--line);border-radius:18px;padding:14px;text-transform:uppercase;color:var(--navy);font-family:inherit}
+  .msg{text-align:center;color:#B4532A;font-weight:800;min-height:24px;margin-top:10px}
+  .names{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+  .names button{background:var(--sky);border-radius:16px;padding:16px 8px;font-weight:900;font-size:18px;color:var(--navy)}
+  .pics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .pics button{font-size:42px;background:#fff;border:2px solid var(--line);border-radius:18px;padding:12px 0}
+  .shake{animation:shake .35s}@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+  .bandcard{display:flex;align-items:center;gap:16px}
+  .bandcard .dot{width:74px;height:74px;border-radius:50%;border:5px solid #fff;box-shadow:0 0 0 2px var(--line);flex-shrink:0}
+  .bandcard small{font-weight:800;color:var(--muted)}
+  .bandcard b{display:block;font-family:"Fredoka";font-size:28px;color:var(--navy);font-weight:600}
+  .path{display:flex;gap:4px;flex-wrap:wrap;margin-top:14px}
+  .path span{width:calc((100% - 76px)/20);min-width:12px;aspect-ratio:1;border-radius:50%;opacity:.35;box-shadow:0 0 0 1px var(--line)}
+  .path span.done{opacity:.8}.path span.on{opacity:1;box-shadow:0 0 0 3px var(--blue2);transform:scale(1.25)}
+  .shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+  .book{text-align:left;border-radius:18px;padding:16px 14px;min-height:150px;display:flex;flex-direction:column;justify-content:space-between;border:2px solid rgba(68,84,111,.08);position:relative}
+  .book b{font-family:"Fredoka";font-size:19px;color:var(--navy);font-weight:600;line-height:1.2}
+  .book small{font-weight:800;color:var(--muted)}
+  .book .tick{position:absolute;top:10px;right:12px;background:#fff;border-radius:999px;padding:2px 9px;font-size:13px;font-weight:900;color:var(--gink)}
+  .reader{font-family:"Nunito",sans-serif;font-size:21px;line-height:1.75;font-weight:600}
+  .reader.easy{font-family:"Atkinson Hyperlegible",sans-serif;letter-spacing:.03em;word-spacing:.12em;line-height:1.9}
+  .reader p{margin-bottom:16px}
+  .reader .w{border-bottom:3px dotted var(--blue);cursor:pointer}
+  .reader mark{background:#E1ECFA;border-bottom:3px solid var(--blue2);border-radius:4px;padding:0 2px;color:inherit}
+  .tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .tools button{background:var(--sky);color:var(--navy);border-radius:999px;padding:8px 14px;font-weight:800;font-size:15px}
+  .tools button.on{background:var(--blue2);color:#fff}
+  .tip{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--navy);color:#fff;border-radius:16px;padding:12px 18px;font-weight:800;max-width:90vw;z-index:30;box-shadow:0 8px 24px rgba(0,0,0,.2)}
+  .q h2{font-size:23px;margin-bottom:14px;line-height:1.3}
+  .opts{display:grid;gap:10px}
+  .opts button{text-align:left;background:#fff;border:2.5px solid var(--line);border-radius:16px;padding:15px 16px;font-weight:800;font-size:18px;color:var(--ink)}
+  .opts button.right{border-color:var(--green2);background:var(--green)}
+  .opts button.wrong{border-color:#E6B8A8;background:#FBEDE7}
+  .prog{height:10px;background:#EEF2F7;border-radius:8px;overflow:hidden;margin-bottom:16px}.prog i{display:block;height:100%;background:var(--blue);transition:width .3s}
+  .lbl{font-weight:900;color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+  .gram{background:var(--green);border-radius:18px;padding:14px 16px;margin-bottom:14px}
+  .gram b{color:var(--gink)}
+  .score{font-family:"Fredoka";font-size:54px;color:var(--navy);text-align:center}
+  .center{text-align:center}
+  .speak{background:var(--sky);border-radius:50%;width:42px;height:42px;font-size:20px;flex-shrink:0}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 18px;border-radius:999px;font-weight:800;opacity:0;transition:.3s;z-index:40;pointer-events:none}
+  .toast.show{opacity:1}
+  .confetti{font-size:64px;text-align:center;animation:pop .6s}@keyframes pop{0%{transform:scale(.3)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
+  .loading{display:grid;place-items:center;min-height:100vh}.loading img{width:110px;animation:bob 1.2s infinite}@keyframes bob{50%{transform:translateY(-8px)}}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="loading"><img src="bird.png" alt="Loading"></div></div>
+<div class="toast" id="toast"></div>
+<script>
+/* ===== CONFIG: the shared ThinkNest Supabase project (public values) ===== */
+const SUPABASE_URL = "https://zmncqutjtgwxlvrdgwiq.supabase.co";
+const SUPABASE_KEY = "sb_publishable_blNQT3mGUzNadaRARkRpew_dq-tmD4J";
+const PICTURES = ["🐢","🐪","⭐","🍎","🚀","🐬","🌻","🦁","🎈","🐝","🍓","⚽"];
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { storageKey: "nestory-kids" } });
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const shuffle = a => a.map(x => [Math.random(), x]).sort((p, q) => p[0] - q[0]).map(x => x[1]);
+let me = null, ns = null, reads = [], screen = "load", roster = null, classCode = "", chosen = null;
+let prefs = JSON.parse(localStorage.getItem("ns_prefs") || '{"size":21,"easy":false}');
+
+function toast(t){ const el = $("#toast"); el.textContent = t; el.classList.add("show"); setTimeout(() => el.classList.remove("show"), 2000); }
+function speak(text){ try{ speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = "en-GB"; u.rate = .9; u.pitch = 1.05;
+  const v = speechSynthesis.getVoices().filter(v => /en-GB/i.test(v.lang)); const pick = v.find(x => /female|Serena|Kate|Martha|Libby|Sonia/i.test(x.name)) || v[0]; if(pick) u.voice = pick; speechSynthesis.speak(u); }catch(e){} }
+function go(s){ screen = s; draw(); window.scrollTo(0, 0); }
+const head = (title, hi, back = "home") => `<div class="head"><img src="bird.png" alt=""><div><div class="hi">${hi}</div><h1>${title}</h1></div>${back ? `<button class="back" onclick="go('${back}')">‹ Back</button>` : ""}</div>`;
+
+/* ---------- start and sign in ---------- */
+async function start(){
+  try{
+    const { data: { session } } = await db.auth.getSession();
+    if(!session){ const r = await db.auth.signInAnonymously(); if(r.error) throw r.error; }
+    const { data } = await db.rpc("me_student");
+    if(data){ me = data; await loadMe(); return go("home"); }
+    const code = new URLSearchParams(location.search).get("c");
+    if(code){ classCode = code; return loadRoster(); }
+    go("code");
+  }catch(e){ $("#app").innerHTML = `<div class="body center"><h2 class="big">Oops!</h2><p class="sub">Nestory can't connect right now. Please ask your teacher.</p></div>`; }
+}
+async function loadRoster(){
+  const { data } = await db.rpc("class_roster", { p_code: classCode });
+  if(!data){ go("code"); $(".msg").textContent = "I can't find that class code. Check it with your teacher."; return; }
+  roster = data; go("names");
+}
+async function tryPicture(pic, el){
+  const { data, error } = await db.rpc("student_login", { p_code: classCode, p_student: chosen.id, p_picture: pic });
+  if(error){ $(".msg").textContent = "Something went wrong. Try again."; return; }
+  if(data.ok){ const r = await db.rpc("me_student"); me = r.data; await loadMe(); go("home"); speak("Hello " + me.first_name + "!"); return; }
+  el.classList.add("shake"); setTimeout(() => el.classList.remove("shake"), 400);
+  $(".msg").textContent = data.reason === "locked" ? "Too many tries. Ask your teacher, or wait 10 minutes." : "Not that one. Try again!";
+}
+async function loadMe(){
+  const [a, b] = await Promise.all([db.rpc("ns_me"), db.from("ns_reads").select("text_id, band, score, created_at").eq("student_id", me.student_id).order("created_at")]);
+  ns = a.data || { band: 0, retest: true }; reads = b.data || [];
+}
+async function bye(){ if(!confirm("Leave Nestory?")) return; await db.rpc("student_logout"); me = null; ns = null; go("code"); }
+
+/* ---------- screens ---------- */
+const SCREENS = {
+  load: () => `<div class="loading"><img src="bird.png" alt="Loading"></div>`,
+  code: () => `<div class="body" style="padding-top:40px"><div class="center"><img src="logo.png" alt="Nestory" style="width:210px"></div>
+    <div class="card"><h2 class="big">What's your class code?</h2><p class="sub">Your teacher will tell you.</p>
+    <input class="code" id="cc" maxlength="8" autocomplete="off" value="${esc(classCode)}" onkeydown="if(event.key==='Enter')$('#go').click()">
+    <button class="btn" id="go" style="margin-top:14px" onclick="classCode=$('#cc').value.trim();if(classCode)loadRoster()">Let's go ➜</button><p class="msg"></p></div></div>`,
+  names: () => head("Who are you?", esc(roster.class_name), "code") + `<div class="body"><div class="card"><div class="names">${roster.students.map(s => `<button onclick='chosen=${JSON.stringify(s)};go("pic")'>${esc(s.first_name)}</button>`).join("")}</div></div></div>`,
+  pic: () => head(`Hi ${esc(chosen.first_name)}!`, "Tap your secret picture", "names") + `<div class="body"><div class="card"><div class="pics">${PICTURES.map(p => `<button onclick="tryPicture('${p}', this)">${p}</button>`).join("")}</div><p class="msg"></p></div></div>`,
+  home: homeView, test: testView, read: readView, check: checkView, result: resultView
+};
+function draw(){ $("#app").innerHTML = (SCREENS[screen] || SCREENS.home)(); }
+
+function bandPath(b){ return `<div class="path" aria-label="My reading journey">${BANDS.slice(1).map(x => `<span class="${x[0] === b ? "on" : x[0] < b ? "done" : ""}" style="background:${x[2]}" title="${x[1]}"></span>`).join("")}</div>`; }
+function homeView(){
+  const b = ns.band, needTest = ns.retest || !b, here = TEXTS.filter(t => t.band === b), doneIds = reads.filter(r => r.band === b).map(r => r.text_id);
+  return `<div class="head"><img src="bird.png" alt=""><div><div class="hi">Hello,</div><h1>${esc(me.first_name)}'s reading nest</h1></div><button class="back" onclick="bye()">👋 Bye</button></div><div class="body">
+    ${needTest ? `<div class="card center"><div style="font-size:54px">🗺️</div><h2 class="big">${b ? "Time for a new reading quest!" : "Your reading quest"}</h2><p class="sub">Read some sentences and short stories. Nestory will find the books that are just right for you. Take your time; there's no rush.</p><button class="btn green" onclick="startTest()">Start my reading quest ➜</button></div>` : ""}
+    ${b ? `<div class="card"><div class="bandcard"><div class="dot" style="background:${bandColour(b)}"></div><div><small>I'm a</small><b>${bandName(b)} reader</b><small>${reads.length} ${reads.length === 1 ? "book" : "books"} read</small></div></div>${bandPath(b)}</div>` : ""}
+    ${b && ns.ready_check ? `<div class="card center" style="background:var(--green)"><div style="font-size:44px">🌟</div><h2 class="big">You're ready for a band check!</h2><p class="sub" style="color:var(--gink)">Answer some questions from ${bandName(b + 1)} band. If you do well, you'll move up!</p><button class="btn green" onclick="startCheck()">Start my band check</button></div>` : ""}
+    ${b && !needTest ? `<div class="card"><h2 style="margin-bottom:12px">📚 My bookshelf</h2>${here.length ? `<div class="shelf">${here.map(t => `<button class="book" style="background:${bandColour(b)}" onclick="openText('${t.id}')">${doneIds.includes(t.id) ? `<span class="tick">✓ read</span>` : ""}<small>${esc(t.type)}</small><b>${esc(t.title)}</b><small>Tap to read</small></button>`).join("")}</div>` : `<p class="sub">New ${bandName(b)} books are being written for you. Ask your teacher what to read today!</p>`}</div>` : ""}
+  </div>`;
+}
+
+/* ---------- reading test (adaptive) ---------- */
+let T = null;
+function startTest(){
+  const exp = expectedBand(me.grade) || 9;
+  T = { b: Math.max(5, Math.min(20, exp)), start: Math.max(5, Math.min(20, exp)), used: {}, r: 0, w: 0, passed: [], failed: [], answers: [], part: "A", B: null, bi: 0, bRight: 0, skills: {}, shown: false, startAt: Date.now() };
+  go("test"); speak("Read each sentence. Choose the word that fits best.");
+}
+function nextItem(){
+  const list = TEST_A[T.b] || [], used = T.used[T.b] || [];
+  const left = list.map((x, i) => i).filter(i => !used.includes(i));
+  if(!left.length) return null;
+  const i = left[0]; (T.used[T.b] = used).push(i); const it = list[i];
+  return { band: T.b, idx: i, s: it[0], opts: shuffle(it[1].map((o, k) => ({ o, ok: k === it[2] }))) };
+}
+function finishA(){
+  const top = T.passed.length ? Math.max(...T.passed) : (T.failed.includes(5) ? 4 : T.start - 1);
+  T.bandA = top;
+  const keys = Object.keys(TEST_B).map(Number), target = Math.max(5, top);
+  const pb = keys.filter(k => k <= target + 1).sort((a, b) => b - a)[0] || keys[0];
+  T.part = "B"; T.pb = pb; T.B = TEST_B[pb]; T.bi = -1; T.bRight = 0;
+  go("test");
+}
+function answerA(k){
+  const it = T.cur, ok = it.opts[k].ok;
+  T.answers.push({ part: "A", band: it.band, item: it.idx, ok });
+  T.skills.sentences = T.skills.sentences || [0, 0]; T.skills.sentences[1]++; if(ok) T.skills.sentences[0]++;
+  if(ok){ T.r++; T.w = 0; if(T.r >= 2){ if(!T.passed.includes(T.b)) T.passed.push(T.b); T.r = 0; if(T.b < 20) T.b++; } }
+  else { T.w++; T.r = 0; if(T.w >= 2){ if(!T.failed.includes(T.b)) T.failed.push(T.b); T.w = 0; if(T.b > 5) T.b--; } }
+  T.cur = null;
+  const n = T.answers.length, basal = T.passed.some(p => T.failed.includes(p + 1));
+  if(n >= 18 || basal || T.passed.includes(20) || (T.failed.includes(5) && T.b === 5 && !T.passed.length && n >= 4)) return finishA();
+  go("test");
+}
+function answerB(k){
+  const q = T.B.q[T.bi], ok = T.bOrder[k] === q[2];
+  T.answers.push({ part: "B", band: T.pb, item: T.bi, ok, skill: q[3] });
+  const s = T.skills[q[3]] = T.skills[q[3]] || [0, 0]; s[1]++; if(ok){ s[0]++; T.bRight++; }
+  T.bi++; T.bOrder = null;
+  if(T.bi >= T.B.q.length) return finishTest();
+  go("test");
+}
+async function finishTest(){
+  const pB = Math.round(T.bRight / T.B.q.length * 100), near = Math.abs(T.pb - Math.max(5, T.bandA)) <= 2;
+  let band = Math.max(4, T.bandA);
+  if(near && pB < 50 && band > 4) band--;
+  const B = BANDS[band], frac = near ? Math.max(.15, Math.min(.9, pB / 100)) : .5;
+  const ra = Math.round(B[4] + (B[5] - B[4]) * frac);
+  const right = T.answers.filter(a => a.ok).length, score = Math.round(right / T.answers.length * 100);
+  const skills = Object.fromEntries(Object.entries(T.skills).map(([k, v]) => [k, Math.round(v[0] / v[1] * 100)]));
+  const { data, error } = await db.rpc("ns_save_test", { p_band: band, p_reading_age: ra, p_score: score, p_skills: skills, p_answers: T.answers, p_form: "A" });
+  if(error || !data || !data.ok){ toast("I couldn't save that. Ask your teacher."); return go("home"); }
+  await loadMe(); R = { kind: "test", band, early: T.bandA < 5 }; go("result");
+}
+function testView(){
+  if(T.part === "A"){
+    if(!T.cur) T.cur = nextItem();
+    if(!T.cur){ setTimeout(finishA, 0); return SCREENS.load(); }
+    const n = T.answers.length, it = T.cur;
+    return head("Reading quest", "Part 1: choose the missing word", "") + `<div class="body"><div class="prog"><i style="width:${Math.min(100, n / 18 * 100)}%"></i></div>
+      <div class="card q"><div class="lbl">Which word fits best?</div><h2>${esc(it.s).replace("___", '<span style="display:inline-block;min-width:80px;border-bottom:3px solid var(--blue2)">&nbsp;</span>')}</h2>
+      <div class="opts">${it.opts.map((o, k) => `<button onclick="answerA(${k})">${esc(o.o)}</button>`).join("")}</div></div>
+      <p class="sub">Some sentences will be easy and some will be tricky. Just do your best!</p></div>`;
+  }
+  const P = T.B;
+  if(T.bi < 0) return head("Reading quest", "Part 2: read and answer", "") + `<div class="body"><div class="card"><div class="row"><h2>${esc(P.title)}</h2><button class="speak" onclick="speak(${esc(JSON.stringify(P.title))})" aria-label="Read the title">🔊</button></div><div class="reader ${prefs.easy ? "easy" : ""}" style="font-size:${prefs.size}px;margin-top:10px">${P.text.map(p => `<p>${esc(p)}</p>`).join("")}</div>
+      <button class="btn green" onclick="T.bi=0;go('test')">I've read it ➜</button></div></div>`;
+  const q = P.q[T.bi]; if(!T.bOrder) T.bOrder = shuffle(q[1].map((o, k) => k));
+  return head("Reading quest", "Part 2: read and answer", "") + `<div class="body"><div class="prog"><i style="width:${T.bi / P.q.length * 100}%"></i></div>
+    <div class="card q"><div class="lbl">Question ${T.bi + 1} of ${P.q.length}</div><h2>${esc(q[0])}</h2><div class="opts">${T.bOrder.map((k, i) => `<button onclick="answerB(${i})">${esc(q[1][k])}</button>`).join("")}</div></div>
+    <details class="card"><summary style="font-weight:900;color:var(--navy);cursor:pointer">📖 Look at the text again</summary><div class="reader ${prefs.easy ? "easy" : ""}" style="font-size:${Math.max(17, prefs.size - 3)}px;margin-top:10px">${P.text.map(p => `<p>${esc(p)}</p>`).join("")}</div></details></div>`;
+}
+
+/* ---------- reading a text ---------- */
+let RD = null, R = null;
+function openText(id){ const t = TEXTS.find(x => x.id === id); RD = { t, step: "read", qi: 0, gi: 0, comp: 0, gram: 0, answers: [], start: Date.now(), picked: null }; go("read"); }
+function marked(p, t, showSpots){
+  let h = esc(p);
+  if(showSpots) (t.grammar.spots || []).forEach(s => { const e = esc(s); if(h.includes(e)) h = h.split(e).join(`<mark>${e}</mark>`); });
+  Object.keys(t.vocab || {}).forEach(w => { h = h.replace(new RegExp(`\\b(${w})\\b(?![^<]*>)`, "i"), `<span class="w" onclick="wordTip('${w}')">$1</span>`); });
+  return h;
+}
+function wordTip(w){ const m = RD.t.vocab[w]; document.querySelectorAll(".tip").forEach(x => x.remove()); const d = document.createElement("div"); d.className = "tip"; d.textContent = `${w}: ${m}`; document.body.appendChild(d); speak(`${w}. ${m}`); setTimeout(() => d.remove(), 4000); }
+function setPref(k, v){ prefs[k] = v; localStorage.setItem("ns_prefs", JSON.stringify(prefs)); draw(); }
+function readAloud(){ speak(RD.t.title + ". " + RD.t.text.join(" ")); }
+function readView(){
+  const t = RD.t, tools = `<div class="tools"><button onclick="readAloud()">🔊 Read to me</button><button onclick="speechSynthesis.cancel()">⏹ Stop</button><button onclick="setPref('size',Math.max(16,prefs.size-2))">A−</button><button onclick="setPref('size',Math.min(32,prefs.size+2))">A+</button><button class="${prefs.easy ? "on" : ""}" onclick="setPref('easy',!prefs.easy)">Easy-read font</button></div>`;
+  if(RD.step === "read") return head(esc(t.title), `${bandName(t.band)} band · ${esc(t.type)}`) + `<div class="body"><div class="card">${tools}<div class="reader ${prefs.easy ? "easy" : ""}" style="font-size:${prefs.size}px">${t.text.map(p => `<p>${marked(p, t)}</p>`).join("")}</div>
+      <p class="sub" style="text-align:left">💡 Tap a dotted word to hear what it means.</p><button class="btn green" onclick="RD.step='q';go('read')">I've finished reading ➜</button></div></div>`;
+  if(RD.step === "q"){
+    const q = t.questions[RD.qi]; if(!RD.order) RD.order = shuffle(q[1].map((o, k) => k));
+    return head(esc(t.title), "Think about what you read") + `<div class="body"><div class="prog"><i style="width:${RD.qi / t.questions.length * 100}%"></i></div>
+      <div class="card q"><div class="row"><div class="lbl">Question ${RD.qi + 1} of ${t.questions.length}</div><button class="speak" onclick="speak(${esc(JSON.stringify(q[0]))})">🔊</button></div><h2>${esc(q[0])}</h2>
+      <div class="opts">${RD.order.map((k, i) => `<button class="${RD.picked !== null ? (k === q[2] ? "right" : i === RD.picked ? "wrong" : "") : ""}" ${RD.picked !== null ? "disabled" : ""} onclick="pickQ(${i})">${esc(q[1][k])}</button>`).join("")}</div>
+      ${RD.picked !== null ? `<button class="btn" style="margin-top:14px" onclick="nextQ()">Next ➜</button>` : ""}</div>
+      <details class="card"><summary style="font-weight:900;color:var(--navy);cursor:pointer">📖 Look at the text again</summary><div class="reader ${prefs.easy ? "easy" : ""}" style="font-size:${Math.max(17, prefs.size - 3)}px;margin-top:10px">${t.text.map(p => `<p>${marked(p, t)}</p>`).join("")}</div></details></div>`;
+  }
+  if(RD.step === "gspot") return head("Grammar spot", esc(t.grammar.focus)) + `<div class="body"><div class="gram"><b>✏️ ${esc(t.grammar.focus)}</b><p style="margin-top:6px;font-weight:700">${esc(t.grammar.explain)}</p></div>
+      <div class="card">${tools}<p class="lbl">Look for the highlighted parts</p><div class="reader ${prefs.easy ? "easy" : ""}" style="font-size:${prefs.size}px">${t.text.map(p => `<p>${marked(p, t, true)}</p>`).join("")}</div>
+      <button class="btn green" onclick="RD.step='g';go('read')">Let's practise ➜</button></div></div>`;
+  if(RD.step === "g"){
+    const g = t.grammar.practice[RD.gi]; if(!RD.order) RD.order = shuffle(g[1].map((o, k) => k));
+    return head("Grammar practice", esc(t.grammar.focus)) + `<div class="body"><div class="prog"><i style="width:${RD.gi / t.grammar.practice.length * 100}%"></i></div>
+      <div class="card q"><div class="lbl">Practice ${RD.gi + 1} of ${t.grammar.practice.length}</div><h2>${esc(g[0])}</h2>
+      <div class="opts">${RD.order.map((k, i) => `<button class="${RD.picked !== null ? (k === g[2] ? "right" : i === RD.picked ? "wrong" : "") : ""}" ${RD.picked !== null ? "disabled" : ""} onclick="pickG(${i})">${esc(g[1][k])}</button>`).join("")}</div>
+      ${RD.picked !== null ? `<button class="btn" style="margin-top:14px" onclick="nextG()">Next ➜</button>` : ""}</div></div>`;
+  }
+  return "";
+}
+function pickQ(i){ const q = RD.t.questions[RD.qi], ok = RD.order[i] === q[2]; RD.picked = i; if(ok) RD.comp++; RD.answers.push({ part: "q", i: RD.qi, ok, skill: q[3] }); draw(); }
+function nextQ(){ RD.picked = null; RD.order = null; RD.qi++; if(RD.qi >= RD.t.questions.length) RD.step = "gspot"; go("read"); }
+function pickG(i){ const g = RD.t.grammar.practice[RD.gi], ok = RD.order[i] === g[2]; RD.picked = i; if(ok) RD.gram++; RD.answers.push({ part: "g", i: RD.gi, ok }); draw(); }
+async function nextG(){
+  RD.picked = null; RD.order = null; RD.gi++;
+  if(RD.gi < RD.t.grammar.practice.length) return go("read");
+  const t = RD.t, nq = t.questions.length, ng = t.grammar.practice.length;
+  const comp = Math.round(RD.comp / nq * 100), gram = Math.round(RD.gram / ng * 100), score = Math.round((RD.comp + RD.gram) / (nq + ng) * 100);
+  const { data, error } = await db.rpc("ns_save_read", { p_text: t.id, p_comp: comp, p_grammar: gram, p_score: score, p_answers: RD.answers, p_seconds: Math.round((Date.now() - RD.start) / 1000) });
+  if(error){ toast("I couldn't save that. Try again later."); }
+  await loadMe(); R = { kind: "read", comp, gram, score, ready: data && data.ready_check }; go("result");
+}
+
+/* ---------- band check (move up) ---------- */
+let CK = null;
+function startCheck(){
+  const nb = ns.band + 1, items = [];
+  (TEST_A[nb] || []).forEach(it => items.push({ q: it[0].replace("___", "_____"), opts: it[1], a: it[2], type: "Which word fits best?" }));
+  (TEST_A[Math.min(20, nb + 1)] || []).slice(0, 2).forEach(it => items.push({ q: it[0].replace("___", "_____"), opts: it[1], a: it[2], type: "Which word fits best?" }));
+  const P = TEST_B[nb]; if(P) P.q.forEach(q => items.push({ q: q[0], opts: q[1], a: q[2], type: P.title }));
+  CK = { items: items.slice(0, 10), i: 0, right: 0, answers: [], passage: P, order: null }; go("check");
+}
+function checkView(){
+  const it = CK.items[CK.i]; if(!it) return "";
+  if(!CK.order) CK.order = shuffle(it.opts.map((o, k) => k));
+  return head("Band check", `Questions from ${bandName(ns.band + 1)} band`, "") + `<div class="body"><div class="prog"><i style="width:${CK.i / CK.items.length * 100}%"></i></div>
+    <div class="card q"><div class="lbl">${esc(it.type)} · ${CK.i + 1} of ${CK.items.length}</div><h2>${esc(it.q)}</h2><div class="opts">${CK.order.map((k, i) => `<button onclick="pickC(${i})">${esc(it.opts[k])}</button>`).join("")}</div></div>
+    ${CK.passage && it.type === CK.passage.title ? `<details class="card" open><summary style="font-weight:900;color:var(--navy)">📖 ${esc(CK.passage.title)}</summary><div class="reader" style="font-size:18px;margin-top:10px">${CK.passage.text.map(p => `<p>${esc(p)}</p>`).join("")}</div></details>` : ""}</div>`;
+}
+async function pickC(i){
+  const it = CK.items[CK.i], ok = CK.order[i] === it.a; if(ok) CK.right++; CK.answers.push({ i: CK.i, ok }); CK.i++; CK.order = null;
+  if(CK.i < CK.items.length) return go("check");
+  const score = Math.round(CK.right / CK.items.length * 100);
+  const { data } = await db.rpc("ns_save_check", { p_score: score, p_answers: CK.answers });
+  await loadMe(); R = { kind: "check", up: data && data.up, score }; go("result");
+}
+
+/* ---------- results ---------- */
+function resultView(){
+  if(R.kind === "test") { speak(`Well done! You are a ${bandName(R.band)} reader.`);
+    return head("Quest complete!", "Well done") + `<div class="body"><div class="card center"><div class="confetti">🎉</div><h2 class="big">You're a ${bandName(R.band)} reader!</h2>
+      <div class="bandcard" style="justify-content:center;margin:16px 0"><div class="dot" style="background:${bandColour(R.band)}"></div></div>
+      <p class="sub">${R.early ? "Your teacher will help you with some of your first books." : "Your bookshelf is ready with books that are just right for you."}</p>${bandPath(R.band)}
+      <button class="btn green" style="margin-top:18px" onclick="go('home')">See my bookshelf ➜</button></div></div>`; }
+  if(R.kind === "check") { speak(R.up ? `Amazing! You moved up to ${bandName(ns.band)} band!` : "Great try! Keep reading and you'll get there.");
+    return head(R.up ? "You moved up!" : "Great try!", "Band check") + `<div class="body"><div class="card center"><div class="confetti">${R.up ? "🌟" : "💪"}</div>
+      <h2 class="big">${R.up ? `Welcome to ${bandName(ns.band)} band!` : "Keep reading, you're getting closer!"}</h2><p class="sub">${R.up ? "You have new books on your bookshelf." : "Read a few more books and you can try again."}</p>${bandPath(ns.band)}
+      <button class="btn green" style="margin-top:18px" onclick="go('home')">Back to my bookshelf ➜</button></div></div>`; }
+  const msg = R.score >= 80 ? "Brilliant reading!" : R.score >= 50 ? "Good reading!" : "You kept going. Well done!";
+  speak(msg);
+  return head("Book finished!", esc(RD.t.title)) + `<div class="body"><div class="card center"><div class="confetti">📗</div><h2 class="big">${msg}</h2>
+    <div class="row" style="justify-content:center;gap:26px;margin:14px 0"><div><div class="score">${R.comp}%</div><p class="sub">Understanding</p></div><div><div class="score">${R.gram}%</div><p class="sub">Grammar</p></div></div>
+    ${R.ready ? `<p class="sub" style="color:var(--gink)">🌟 You're ready for a band check! Find it on your home page.</p>` : ""}
+    <button class="btn green" onclick="go('home')">Back to my bookshelf ➜</button></div></div>`;
+}
+start();
+</script>
+</body>
+</html>
