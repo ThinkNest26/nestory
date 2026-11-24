@@ -118,17 +118,6 @@ const TEST_B = {
    Each text: id, band, title, type, text (paragraphs), vocab {word: meaning},
    questions [q, options, answer, skill], grammar {focus, explain, spots [phrases in the text], practice [q, options, answer]} */
 const TEXTS = [
-  { id: "p9-sandcastle", band: 9, title: "The Great Sandcastle", type: "Story", text: [
-      "Last Saturday, Aisha and her brother Zayd went to the beach. The sun was shining and the waves were crashing on the shore.",
-      "They wanted to build the biggest sandcastle on the beach, but the sand was too dry. Zayd fetched water in a bucket, and Aisha patted the wet sand into towers. By lunchtime, the castle had four towers, a moat and a bridge made of shells.",
-      "Suddenly, a huge wave rushed up the beach. Was the castle going to fall? The water filled the moat, but the towers stood strong. Aisha and Zayd cheered.",
-      "\"Shall we build another one, or shall we have lunch?\" asked Zayd. Aisha laughed. \"Lunch first, then a bigger castle!\""],
-    vocab: { moat: "a ditch of water around a castle", fetched: "went and brought back", shore: "the land at the edge of the sea" },
-    questions: [["Why did Zayd fetch water?", ["The sand was too dry.", "He was thirsty.", "He wanted to swim."], 0, "retrieval"], ["What was the bridge made of?", ["shells", "stones", "sticks"], 0, "retrieval"],
-      ["How did they feel when the towers stood strong?", ["relieved and happy", "sad and tired", "angry and cross"], 0, "inference"], ["What will they probably do next?", ["Have lunch, then build a bigger castle", "Go straight home", "Knock the castle down"], 0, "prediction"]],
-    grammar: { focus: "Past progressive tense · joining with and, but, or", explain: "The past progressive tells us what was happening: 'was shining', 'were crashing'. We join ideas with 'and', 'but' (for a contrast) and 'or' (for a choice).",
-      spots: ["was shining", "were crashing", "but the sand was too dry", "or shall we have lunch"],
-      practice: [["Choose the past progressive: \"The children ___ in the sea.\"", ["were swimming", "are swim", "swims"], 0], ["Which word fits? \"I wanted to swim, ___ the water was cold.\"", ["but", "or", "if"], 0], ["Which word fits? \"Would you like juice ___ water?\"", ["or", "but", "so"], 0]] } },
   { id: "l12-neighbour", band: 12, title: "The New Neighbour", type: "Story", text: [
       "Mr Okafor has lived at number 12 for forty years. He has grown tomatoes in his garden every summer, and he has never missed a single day of watering them. So when a removal van arrived next door, he peered over the fence with great curiosity.",
       "A girl with a tool belt jumped down from the van. \"Hello!\" she called. \"I'm Lina. Have you seen a small grey cat? She has escaped from her basket!\"",
@@ -354,3 +343,209 @@ const GREEN_TEXTS = [
 
 
 TEST_A[6] = GREEN_A; TEST_B[6] = GREEN_B; TEXTS.unshift(...GREEN_TEXTS);
+
+/* =================== PURPLE BAND: full set =================== */
+/* PURPLE BAND (9) · Year 2 · reading age 7y–7y3m · RWI Blue
+   Grammar: past and present tense used consistently, including progressive forms; co-ordination with or, and, but */
+const PURPLE_A = [
+  ["Because the bridge was broken, the cars had to find another ___.", ["route", "roof", "rule", "rope"], 0],
+  ["Lena whispered so that she wouldn't ___ the sleeping baby.", ["wake", "bake", "take", "make"], 0],
+  ["The volcano had been ___ for hundreds of years before it erupted.", ["quiet", "quite", "quilt", "quick"], 0],
+  ["The guide explained how the ancient pots were ___.", ["made", "swum", "flown", "laughed"], 0],
+  ["The children were ___ because the school trip was tomorrow.", ["excited", "purple", "slowly", "under"], 0],
+  ["The baby bird was too small to ___ from the nest.", ["fly", "flew", "flying", "flies"], 0],
+  ["Please ___ your hands before you eat.", ["wash", "watch", "wish", "was"], 0],
+  ["The giant was so ___ that his head touched the clouds.", ["tall", "tail", "tell", "tile"], 0],
+  ["Mum asked me to ___ the table for dinner.", ["set", "sit", "sat", "seat"], 0],
+  ["Yesterday, the children ___ to the park.", ["walked", "walk", "walking", "walks"], 0],
+  ["The snail moved very ___ across the path.", ["slowly", "slow", "slowed", "slowing"], 0],
+  ["I could not ___ the top shelf, so I stood on a chair.", ["reach", "teach", "beach", "peach"], 0],
+  ["The pirate buried the ___ on the island.", ["treasure", "measure", "pleasure", "leisure"], 0],
+  ["We wear a helmet to keep our heads ___.", ["safe", "save", "same", "sale"], 0],
+  ["The owl hunts at night and ___ during the day.", ["sleeps", "sleep", "slept", "sleeping"], 0],
+  ["Our teacher read us a story about a brave ___.", ["knight", "night", "knit", "knot"], 0],
+  ["My ice cream fell on the floor and I started to ___.", ["cry", "dry", "fry", "try"], 0],
+  ["There was a ___ of thunder and everyone jumped.", ["crash", "crush", "cash", "crab"], 0],
+  ["The shop was closed, so we had to come back ___.", ["later", "ladder", "letter", "latter"], 0],
+  ["Amira used a ruler to ___ a straight line.", ["draw", "drawer", "drew", "drawn"], 0],
+  ["The tortoise won the race because he never ___ up.", ["gave", "gives", "give", "giving"], 0],
+  ["My brother is ___ than me, but I am faster.", ["taller", "tallest", "tall", "tallness"], 0],
+  ["The birthday cake was ___ with strawberries and cream.", ["decorated", "delighted", "declared", "delivered"], 0],
+  ["We could hear the waves ___ against the rocks.", ["crashing", "crushing", "catching", "counting"], 0],
+  ["It was so foggy that we could ___ see the road.", ["hardly", "harder", "hard", "hardest"], 0],
+  ["The farmer ___ the sheep into the field.", ["led", "lid", "lad", "laid"], 0],
+  ["Hassan ___ his juice because he was thirsty.", ["drank", "drink", "drunk", "drinking"], 0],
+  ["The library is a ___ place, so please whisper.", ["quiet", "quite", "quit", "quilt"], 0],
+  ["The firefighters were very ___ when they rescued the cat.", ["brave", "brain", "bread", "braid"], 0],
+  ["You can choose an apple ___ a banana.", ["or", "of", "on", "our"], 0]
+];
+
+const PURPLE_B = [
+  { title: "Hedgehogs", text: [
+      "Hedgehogs are small mammals with about 5,000 sharp spines on their backs. When a hedgehog is frightened, it rolls into a tight ball so that its spines point outwards. This protects its soft tummy from predators such as foxes and badgers.",
+      "Hedgehogs are nocturnal, which means they sleep during the day and search for food at night. They eat beetles, worms, caterpillars and slugs, so gardeners are often pleased to see them.",
+      "In winter, food is hard to find. Hedgehogs build nests of leaves and hibernate until spring. While they hibernate, their hearts beat very slowly and they use the fat they stored in autumn.",
+      "You can help hedgehogs by leaving a small gap under your garden fence, so they can travel safely between gardens."],
+    q: [["What does a hedgehog do when it is frightened?", ["It rolls into a tight ball.", "It climbs up a tree.", "It hides in a pond."], 0, "retrieval"],
+        ["What does \"nocturnal\" mean?", ["active at night", "very small", "covered in spines"], 0, "vocabulary"],
+        ["Why are gardeners pleased to see hedgehogs?", ["They eat slugs and insects that harm plants.", "They dig holes for planting.", "They keep foxes away from houses."], 0, "inference"],
+        ["What do hedgehogs live on while they hibernate?", ["fat they stored in autumn", "worms they find at night", "leaves from their nest"], 0, "retrieval"],
+        ["Which is the best heading for the last paragraph?", ["How you can help hedgehogs", "What hedgehogs eat", "Hedgehogs in winter"], 0, "summarising"]] },
+  { title: "The Lost Little Turtle", text: [
+      "Every summer night, baby turtles hatch from their eggs on the beach. They crawl towards the bright moon shining on the sea.",
+      "One night, Mariam was walking on the beach with her dad. She saw a tiny turtle crawling the wrong way! It was heading towards the lights of the hotels.",
+      "\"Dad, it's lost!\" Mariam whispered. \"The lights are confusing it.\"",
+      "Dad knew they should not pick it up. So Mariam stood between the turtle and the hotel lights, and Dad pointed his torch at the water. Slowly, the little turtle turned around. It crawled across the cool sand, step by step, until a wave carried it into the sea.",
+      "Mariam smiled. \"Good luck, little turtle,\" she said. \"Come back one day!\""],
+    q: [["Which lights was the turtle crawling towards?", ["the lights of the hotels", "the moon", "Dad's torch"], 0, "retrieval"],
+        ["What does \"whispered\" mean?", ["spoke very quietly", "shouted loudly", "cried"], 0, "vocabulary"],
+        ["How did the torch help the turtle?", ["It showed the turtle the way to the sea.", "It kept the turtle warm.", "It scared the turtle away."], 0, "inference"],
+        ["What happened after the turtle turned around?", ["It crawled across the sand to the sea.", "It went back to its egg.", "Mariam carried it home."], 0, "sequencing"],
+        ["What might Mariam do if she sees another lost turtle?", ["help it find the sea", "take it home as a pet", "run away from it"], 0, "prediction"]] },
+  { title: "The Wind", text: [
+      "The wind is whistling through the trees,",
+      "It's tugging at my coat.",
+      "It's rattling all the windows,",
+      "It's rocking every boat.",
+      "It chased my hat along the street",
+      "And blew my kite away,",
+      "But when I'm snug inside my bed",
+      "It sings till break of day."],
+    q: [["What did the wind chase along the street?", ["my hat", "my kite", "a boat"], 0, "retrieval"],
+        ["What happened to the kite?", ["The wind blew it away.", "It got stuck in a tree.", "It fell in the sea."], 0, "retrieval"],
+        ["What does \"snug\" mean?", ["warm and comfortable", "cold and wet", "scared and lonely"], 0, "vocabulary"],
+        ["How does the wind seem at the end of the poem?", ["gentle and calm", "angry and wild", "frightening"], 0, "inference"],
+        ["Which word tells you how the wind sounds in the trees?", ["whistling", "tugging", "rocking"], 0, "language"]] }
+];
+
+const PCOORD = { focus: "Joining with and, but, or", explain: "We join ideas with 'and' (to add), 'but' (to show something different or surprising) and 'or' (to show a choice)." };
+const PPROG = { focus: "Progressive tense (-ing)", explain: "The progressive tense tells us what is or was happening. Present: am / is / are + -ing (the bees are working). Past: was / were + -ing (the rain was falling)." };
+const PPAST = { focus: "Past tense", explain: "Stories and recounts are usually told in the past tense. Many past tense verbs end in -ed (walked, painted). Some are different (stood, swam, drew). Keep to the past tense all the way through." };
+const PPRESENT = { focus: "Present tense", explain: "Information texts are usually written in the present tense, because they tell us what is true now (a caterpillar eats leaves). Keep to the present tense all the way through." };
+
+const PURPLE_TEXTS = [
+  { id: "p9-sandcastle", band: 9, title: "The Great Sandcastle", type: "Story", text: [
+      "Last Saturday, Aisha and her brother Zayd went to the beach with their grandparents. The sun was shining and the waves were crashing on the shore.",
+      "They wanted to build the biggest sandcastle on the beach, but the sand was too dry. It kept falling down! Zayd fetched water in a bucket, and Aisha patted the wet sand into towers. Grandpa dug a deep moat around the castle, and Grandma collected shells for a bridge.",
+      "By lunchtime, the castle had four towers, a moat and a bridge made of shells. People were stopping to look at it. A little boy asked, \"Can I help?\" \"Yes, of course!\" said Aisha.",
+      "Suddenly, a huge wave rushed up the beach. Was the castle going to fall? Everyone was holding their breath. The water filled the moat, but the towers stood strong. Aisha and Zayd cheered, and the little boy jumped up and down.",
+      "\"Shall we build another one, or shall we have lunch?\" asked Zayd. Aisha laughed. \"Lunch first, then an even bigger castle!\""],
+    vocab: { moat: "a ditch of water around a castle", fetched: "went and brought back", shore: "the land at the edge of the sea" },
+    questions: [["Why did they need water?", ["The sand was too dry.", "They were thirsty.", "They wanted to swim."], 0, "retrieval"], ["What did Grandma collect?", ["shells for a bridge", "water in a bucket", "towels"], 0, "retrieval"],
+      ["\"Everyone was holding their breath.\" This tells us they were…", ["nervous, waiting to see what would happen", "swimming under the water", "very tired"], 0, "inference"], ["What does \"moat\" mean?", ["a ditch of water around a castle", "a tall tower", "a kind of boat"], 0, "vocabulary"], ["What will they probably do next?", ["Have lunch, then build a bigger castle", "Go straight home", "Knock the castle down"], 0, "prediction"]],
+    grammar: Object.assign({}, PCOORD, { spots: ["but the sand was too dry", "and Aisha patted the wet sand into towers", "but the towers stood strong", "or shall we have lunch"],
+      practice: [["Which word fits? \"I wanted to swim, ___ the water was cold.\"", ["but", "or", "if"], 0], ["Which word fits? \"Would you like juice ___ water?\"", ["or", "but", "so"], 0], ["Which word fits? \"Zayd fetched water ___ Aisha built the towers.\"", ["and", "if", "than"], 0]] }) },
+  { id: "p9-lights", band: 9, title: "The Night the Lights Went Out", type: "Story", text: [
+      "It was a stormy evening. Rain was drumming on the roof and the wind was howling outside.",
+      "Inside, the Haddad family were getting ready for dinner. Mum was cooking rice, Dad was laying the table and Sami was finishing his homework. His little sister Lina was playing with her blocks on the rug.",
+      "Suddenly, there was a loud crack of thunder, and all the lights went out! Lina screamed. \"I can't see anything!\"",
+      "\"Don't worry,\" said Dad calmly. \"I know where the torches are.\" He felt his way along the wall to the kitchen drawer. A moment later, a beam of light was shining across the room. Mum found some candles, and soon the room was glowing with warm, golden light.",
+      "\"Let's have a candlelit dinner,\" said Mum. While they were eating, Sami told a funny story about a cat who was scared of mice. Everyone was laughing so much that they didn't notice when the lights came back on!",
+      "\"Can we have a power cut every night?\" asked Lina."],
+    vocab: { howling: "making a long, loud, wild sound", calmly: "in a quiet way, without worrying", glowing: "shining with a soft, warm light" },
+    questions: [["What was Mum doing before the lights went out?", ["cooking rice", "laying the table", "playing with blocks"], 0, "retrieval"], ["What made the lights go out?", ["a loud crack of thunder in the storm", "Sami switched them off", "Lina pulled a plug"], 0, "retrieval"],
+      ["How did Dad find the torches in the dark?", ["He felt his way along the wall.", "He lit a candle first.", "Lina showed him."], 0, "retrieval"], ["Why didn't they notice the lights come back on?", ["They were laughing so much.", "They were asleep.", "They had their eyes closed."], 0, "inference"], ["How did Lina feel about the power cut by the end?", ["She enjoyed it.", "She was still scared.", "She was angry with Sami."], 0, "inference"]],
+    grammar: Object.assign({}, PPROG, { spots: ["Rain was drumming", "the wind was howling", "Mum was cooking rice", "Dad was laying the table", "Lina was playing", "was shining", "were eating", "Everyone was laughing"],
+      practice: [["Which fits? \"While Dad ___ the table, Mum cooked rice.\"", ["was laying", "is lay", "lays"], 0], ["Which sentence tells us what was happening?", ["The rain was drumming on the roof.", "The lights went out.", "Lina screamed."], 0], ["Change to the past progressive: \"Sami plays with his blocks.\"", ["Sami was playing with his blocks.", "Sami were playing with his blocks.", "Sami is play with his blocks."], 0]] }) },
+  { id: "p9-shoe", band: 9, title: "Max and the Missing Shoe", type: "Story", text: [
+      "Max was late for school. He had his bag and his coat, but he could only find one shoe!",
+      "\"Where is my other shoe?\" he groaned. He looked under the bed, but it wasn't there. He looked in the cupboard and behind the door, but he still couldn't find it.",
+      "\"Is it in the garden, or did you leave it in the car?\" asked Mum. Max ran outside. He checked the car and the garden, but there was no shoe.",
+      "Then he heard a strange noise coming from the dog's basket. Grrr… chomp… grrr… Max peeped into the basket. There was Biscuit, the puppy, and there was the missing shoe! Biscuit was chewing the laces and wagging his tail.",
+      "\"Biscuit!\" laughed Max. \"You can play with your ball, or you can play with your bone, but you can't play with my shoe!\"",
+      "Max wiped the shoe and put it on. It was a bit wet, but it was fine. That afternoon, Max put both of his shoes on a high shelf, and Biscuit got a new chew toy."],
+    vocab: { groaned: "made a long, unhappy sound", peeped: "looked quickly and quietly", laces: "the strings that tie a shoe" },
+    questions: [["How many shoes could Max find at first?", ["one", "two", "none"], 0, "retrieval"], ["Where was the missing shoe?", ["in the dog's basket", "in the car", "under the bed"], 0, "retrieval"],
+      ["Who is Biscuit?", ["Max's puppy", "Max's brother", "Max's teacher"], 0, "retrieval"], ["Why did Max put his shoes on a high shelf?", ["so Biscuit couldn't reach them", "to dry them", "to keep them clean for school"], 0, "inference"], ["What does \"groaned\" mean?", ["made a long, unhappy sound", "jumped high", "laughed quietly"], 0, "vocabulary"]],
+    grammar: Object.assign({}, PCOORD, { spots: ["but he could only find one shoe", "but it wasn't there", "or did you leave it in the car", "or you can play with your bone", "but you can't play with my shoe", "but it was fine"],
+      practice: [["Which word shows a choice? \"Is it in the garden, or in the car?\"", ["or", "in", "the"], 0], ["Which word fits? \"He looked under the bed, ___ it wasn't there.\"", ["but", "or", "if"], 0], ["Which word fits? \"You can have an apple ___ a pear.\"", ["or", "but", "so"], 0]] }) },
+  { id: "p9-firstday", band: 9, title: "Noor's First Day", type: "Story", text: [
+      "Noor stood at the classroom door and held her mum's hand tightly. It was her first day at a new school, and her tummy felt full of butterflies. \"What if nobody talks to me?\" she whispered.",
+      "Just then, a girl with curly hair walked over. \"Hi! I'm Hana,\" she said with a big smile. \"Do you want to sit next to me?\" Noor nodded. She waved goodbye to Mum and followed Hana to a table by the window.",
+      "In the morning, the class painted pictures of their families. Noor painted her mum, her dad and her baby brother. Hana painted her three cats! At break time, they played hopscotch together, and Hana showed Noor where the library was.",
+      "After lunch, the teacher read a story about a little owl who was afraid of the dark. Noor listened carefully and answered a question. \"Well done, Noor!\" said the teacher.",
+      "At home time, Mum asked, \"How was your first day?\" Noor grinned. \"It was brilliant. Can I come back tomorrow?\""],
+    vocab: { tightly: "holding on very hard", nodded: "moved her head up and down to say yes", grinned: "gave a big smile", brilliant: "really great" },
+    questions: [["How did Noor feel when she arrived?", ["nervous", "angry", "bored"], 0, "inference"], ["Who is Hana?", ["a girl who becomes Noor's friend", "Noor's sister", "the teacher"], 0, "retrieval"],
+      ["What did Hana paint?", ["her three cats", "her family", "an owl"], 0, "retrieval"], ["\"Her tummy felt full of butterflies.\" This means she felt…", ["nervous", "hungry", "sick"], 0, "vocabulary"], ["How did Noor feel at the end of the day?", ["happy, and wanting to come back", "tired and sad", "worried about tomorrow"], 0, "inference"]],
+    grammar: Object.assign({}, PPAST, { spots: ["stood", "walked", "nodded", "waved", "followed", "painted", "played", "listened", "answered", "grinned"],
+      practice: [["Change to the past tense: \"Noor waves goodbye.\"", ["Noor waved goodbye.", "Noor waving goodbye.", "Noor wave goodbye."], 0], ["Which fits? \"Yesterday, Hana ___ a picture of her cats.\"", ["painted", "paints", "painting"], 0], ["Which verb is in the past tense?", ["followed", "follow", "follows"], 0]] }) },
+  { id: "p9-butterfly", band: 9, title: "The Life Cycle of a Butterfly", type: "Information", text: [
+      "A butterfly goes through four stages in its life. This is called a life cycle.",
+      "1. Egg: A female butterfly lays tiny eggs on a leaf. She chooses a plant that the baby caterpillars will like to eat.",
+      "2. Caterpillar: After a few days, a caterpillar hatches from each egg. The caterpillar is very hungry! It eats and eats, and it grows bigger and bigger. As it grows, it sheds its skin several times.",
+      "3. Chrysalis: When the caterpillar is fully grown, it hangs from a twig and makes a hard case around itself. This case is called a chrysalis. Inside, the caterpillar slowly changes. This can take one or two weeks.",
+      "4. Butterfly: At last, the chrysalis splits open and a butterfly crawls out. Its wings are soft and crumpled at first, so it rests and lets them dry in the sun. Then it flies away to find flowers.",
+      "Later, the butterfly lays eggs of its own, and the life cycle starts again."],
+    vocab: { stages: "steps or parts, one after another", hatches: "comes out of an egg", sheds: "lets something fall off", crumpled: "creased and folded" },
+    questions: [["How many stages are in a butterfly's life cycle?", ["four", "three", "two"], 0, "retrieval"], ["What is the hard case called?", ["a chrysalis", "a cocoon of leaves", "an egg"], 0, "retrieval"],
+      ["Why does the mother butterfly choose a special plant?", ["so the caterpillars have food to eat", "so the eggs are hidden from rain", "so she can rest"], 0, "inference"], ["Which stage comes after the caterpillar?", ["chrysalis", "egg", "butterfly"], 0, "sequencing"], ["Why does the new butterfly rest at first?", ["Its wings are soft and need to dry.", "It is hungry.", "It is looking for eggs."], 0, "retrieval"]],
+    grammar: Object.assign({}, PPRESENT, { spots: ["lays", "chooses", "hatches", "eats", "grows", "hangs", "changes", "splits", "crawls", "flies"],
+      practice: [["Which fits? \"A caterpillar ___ leaves.\"", ["eats", "ate", "eaten"], 0], ["Which sentence is in the present tense?", ["The butterfly flies away.", "The butterfly flew away.", "The butterfly was flying away."], 0], ["Information texts are usually written in the…", ["present tense", "past tense", "future tense"], 0]] }) },
+  { id: "p9-rubbish", band: 9, title: "Where Does Our Rubbish Go?", type: "Information", text: [
+      "Every day, families throw away lots of rubbish. Some of it goes to big holes in the ground called landfill sites, but some of it can be recycled.",
+      "Recycling means turning old things into new things. Paper and cardboard can become new boxes and newspapers. Plastic bottles can become new bottles, or they can even be turned into warm fleece jackets! Glass jars can be melted and made into new jars.",
+      "Recycling is good for our planet. It saves energy, and it means we cut down fewer trees. It also keeps rubbish out of the sea, where it can hurt fish and turtles.",
+      "You can help at home and at school. Rinse your bottles and jars, and put them in the recycling bin. You can reuse a bag, or you can take your own bottle to school. Food scraps cannot be recycled with paper, but they can be made into compost for the garden.",
+      "Remember the three Rs: reduce, reuse and recycle!"],
+    vocab: { recycled: "made into something new", rinse: "wash quickly with water", compost: "rotted food and plants that feed the soil" },
+    questions: [["What is a landfill site?", ["a big hole in the ground for rubbish", "a recycling bin", "a park"], 0, "retrieval"], ["What can plastic bottles be turned into?", ["fleece jackets", "glass jars", "newspapers"], 0, "retrieval"],
+      ["Why is rubbish in the sea a problem?", ["It can hurt fish and turtles.", "It makes the sea too cold.", "It stops the waves."], 0, "retrieval"], ["What does \"rinse\" mean?", ["wash quickly with water", "throw away", "break into pieces"], 0, "vocabulary"], ["What are the three Rs?", ["reduce, reuse and recycle", "rinse, run and rest", "read, write and recycle"], 0, "summarising"]],
+    grammar: Object.assign({}, PCOORD, { spots: ["but some of it can be recycled", "or they can even be turned into warm fleece jackets", "and it means we cut down fewer trees", "or you can take your own bottle to school", "but they can be made into compost"],
+      practice: [["Which word joins two choices? \"You can walk to school ___ ride a bike.\"", ["or", "but", "if"], 0], ["Which word fits? \"Paper can be recycled, ___ food scraps cannot.\"", ["but", "or", "so"], 0], ["Which word fits? \"Rinse your bottles ___ put them in the bin.\"", ["and", "or", "but"], 0]] }) },
+  { id: "p9-aquarium", band: 9, title: "Our Trip to the Aquarium", type: "Recount", text: [
+      "On Tuesday, Class 2B went on a trip to the aquarium. We travelled there on a big blue coach.",
+      "When we arrived, a guide called Mr Khalid met us at the entrance. First, he took us through a glass tunnel. Sharks and rays swam right over our heads! A huge turtle glided past, and Omar shouted, \"Look! It's waving at us!\"",
+      "Next, we visited the rock pool. We gently touched a starfish with two fingers. It felt rough and bumpy. Mr Khalid explained that starfish can grow back a lost arm.",
+      "After that, we watched the penguins having their lunch. One cheeky penguin stole a fish from his friend!",
+      "Finally, we ate our packed lunches in the garden and drew pictures of our favourite sea creatures. I drew a jellyfish with long, wavy tentacles.",
+      "We arrived back at school at three o'clock. It was the best trip ever, and I learned that the ocean is full of amazing animals."],
+    vocab: { guide: "a person who shows visitors around", glided: "moved along smoothly and easily", tentacles: "long, bendy arms of a sea animal" },
+    questions: [["How did the class travel to the aquarium?", ["on a coach", "by train", "on foot"], 0, "retrieval"], ["What did they touch in the rock pool?", ["a starfish", "a turtle", "a penguin"], 0, "retrieval"],
+      ["What did the cheeky penguin do?", ["stole a fish from his friend", "waved at the children", "swam through the tunnel"], 0, "retrieval"], ["What did the class do first?", ["walked through a glass tunnel", "ate their packed lunches", "watched the penguins"], 0, "sequencing"], ["How did the writer feel about the trip?", ["They loved it.", "They were bored.", "They were scared."], 0, "inference"]],
+    grammar: Object.assign({}, PPAST, { spots: ["travelled", "arrived", "met", "took", "swam", "glided", "visited", "touched", "explained", "watched", "stole", "drew"],
+      practice: [["Which word is in the past tense?", ["visited", "visit", "visiting"], 0], ["Which fits? \"Yesterday we ___ the penguins.\"", ["watched", "watch", "watches"], 0], ["Some past tense verbs don't end in -ed. What is the past tense of \"swim\"?", ["swam", "swimmed", "swims"], 0]] }) },
+  { id: "p9-bees", band: 9, title: "Busy Bees", type: "Information", text: [
+      "Look inside a beehive and you will find thousands of bees. Every bee has a job, and right now they are all working hard!",
+      "In the middle of the hive, the queen bee is laying eggs. She can lay over a thousand eggs in one day!",
+      "Around her, young worker bees are cleaning the cells and feeding the baby bees, called larvae. Other bees are building new wax cells. They make the wax from their own bodies.",
+      "Outside, older worker bees are flying from flower to flower. They are collecting nectar, a sweet juice, and carrying pollen on their back legs. When they return, they pass the nectar to other bees, who turn it into honey.",
+      "At the entrance, guard bees are watching carefully. They are checking that no strangers come in.",
+      "Bees are very important. As they fly from flower to flower, they are helping plants to make seeds and fruit. Without bees, we would have much less food to eat."],
+    vocab: { larvae: "baby insects that look like small worms", nectar: "a sweet juice inside flowers", entrance: "the way in" },
+    questions: [["What is the queen bee doing?", ["laying eggs", "making wax", "guarding the door"], 0, "retrieval"], ["What are baby bees called?", ["larvae", "drones", "cells"], 0, "retrieval"],
+      ["What do bees make honey from?", ["nectar", "wax", "pollen"], 0, "retrieval"], ["What is the job of the guard bees?", ["to check that no strangers come in", "to feed the larvae", "to collect nectar"], 0, "retrieval"], ["Why are bees important to us?", ["They help plants make seeds and fruit.", "They keep strangers away.", "They make wax for candles."], 0, "inference"]],
+    grammar: Object.assign({}, PPROG, { spots: ["are all working", "is laying", "are cleaning", "are flying", "are collecting", "are watching", "are checking", "are helping"],
+      practice: [["Which fits? \"The bees ___ honey right now.\"", ["are making", "makes", "made"], 0], ["Which fits? \"The queen ___ eggs at the moment.\"", ["is laying", "are laying", "laying"], 0], ["Which sentence tells us what is happening now?", ["The guard bees are watching the door.", "The guard bees watched the door.", "The guard bees will watch the door."], 0]] }) },
+  { id: "p9-street", band: 9, title: "The Busy Street", type: "Poem", text: [
+      "The baker's baking loaves of bread,",
+      "The painter's painting doors bright red,",
+      "The postman's whistling down the lane,",
+      "The cars are honking once again.",
+      "The children are skipping, two by two,",
+      "The puppy's chasing someone's shoe,",
+      "The rain is falling, splish, splash, splosh,",
+      "And everyone is getting washed!"],
+    vocab: { loaves: "more than one loaf of bread", lane: "a narrow road", honking: "making a loud horn sound" },
+    questions: [["What colour is the painter painting the doors?", ["red", "blue", "green"], 0, "retrieval"], ["What is the puppy chasing?", ["someone's shoe", "a cat", "the postman"], 0, "retrieval"],
+      ["Which words sound like the rain?", ["splish, splash, splosh", "two by two", "once again"], 0, "language"], ["What happens to everyone at the end?", ["They get wet in the rain.", "They go to sleep.", "They buy bread."], 0, "inference"], ["Where is the postman whistling?", ["down the lane", "in the bakery", "on the bus"], 0, "retrieval"]],
+    grammar: Object.assign({}, PPROG, { spots: ["are honking", "are skipping", "is falling", "is getting"],
+      practice: [["\"The baker's baking\" means…", ["The baker is baking.", "The baker was baking.", "The baker bakes."], 0], ["Which fits? \"The children ___ skipping.\"", ["are", "is", "am"], 0], ["Which line tells us what is happening now?", ["The rain is falling.", "The rain fell.", "The rain will fall."], 0]] }) },
+  { id: "p9-choices", band: 9, title: "This or That?", type: "Poem", text: [
+      "Shall I wear my red jumper, or my blue?",
+      "Shall I have some toast, or porridge too?",
+      "Shall I play football, or ride my bike?",
+      "Shall I read a book, or go for a hike?",
+      "I could build a den, or bake a cake,",
+      "Or paddle my boat across the lake.",
+      "So many choices, what shall I do?",
+      "I'll do them all, and you can come too!"],
+    vocab: { porridge: "a warm breakfast made with oats", hike: "a long walk in the countryside", den: "a small hiding place you build" },
+    questions: [["What colours could the jumper be?", ["red or blue", "green or yellow", "black or white"], 0, "retrieval"], ["Where would the child paddle the boat?", ["across the lake", "down the river", "in the sea"], 0, "retrieval"],
+      ["What does the child decide at the end?", ["to do all of them", "to stay in bed", "to go for a hike only"], 0, "retrieval"], ["What does \"hike\" mean?", ["a long walk in the countryside", "a fast bike ride", "a kind of game"], 0, "vocabulary"], ["Why does the poem ask so many questions?", ["The child is trying to choose what to do.", "The child is lost.", "The child is angry."], 0, "inference"]],
+    grammar: Object.assign({}, PCOORD, { spots: ["or my blue", "or porridge too", "or ride my bike", "or go for a hike", "or bake a cake", "and you can come too"],
+      practice: [["Which word shows a choice?", ["or", "and", "but"], 0], ["Which word fits? \"Do you want toast ___ porridge?\"", ["or", "but", "so"], 0], ["Which word fits? \"I'll do them all, ___ you can come too!\"", ["and", "or", "but"], 0]] }) }
+];
+
+
+TEST_A[9] = PURPLE_A; TEST_B[9] = PURPLE_B; TEXTS.push(...PURPLE_TEXTS);
