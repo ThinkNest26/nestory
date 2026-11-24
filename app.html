@@ -96,6 +96,11 @@
   .trow .hint{display:block;font-size:12px}
   .pill{display:inline-block;border-radius:999px;padding:5px 11px;font-weight:900;background:#F1F3F6;color:var(--muted)}
   .pill.up{background:var(--green);color:var(--gink)}.pill.dn{background:var(--rose);color:var(--rink)}
+  .trk th,.trk td{text-align:center;white-space:nowrap;padding:8px 6px;font-size:13px}.trk th{font-size:11px}.trk th:first-child,.trk td:first-child{text-align:left;white-space:normal;min-width:130px}
+  .trk tr.grp td{background:#F5F9FD;border-bottom:1px solid var(--line)}.trk tr.grp.sub td{background:#FAFCFE}
+  .bdot{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:4px;vertical-align:middle;box-shadow:0 0 0 1px rgba(0,0,0,.12)}
+  .pill.mid{background:var(--amber);color:var(--aink)}
+  .sn{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid #EEF2F7}.sn:first-of-type{border-top:0}
   @media (max-width:860px){ .how{grid-template-columns:1fr 1fr} .hero{flex-direction:column;text-align:center} }
   @media (max-width:860px){ .stats{grid-template-columns:1fr 1fr} .grid2{grid-template-columns:1fr} .tabs{margin-left:0} .hide-sm{display:none} }
 </style>
@@ -151,7 +156,8 @@ async function loadSchool(){
   try{
     const m = await db.from("school_members").select("school_id, role").eq("user_id", S.user.id);
     const mine = (m.data || [])[0];
-    if(mine){ const sc = await db.from("schools").select("id, name, code").eq("id", mine.school_id).single(); S.school = sc.data || null; S.schoolRole = mine.role; }
+    if(mine){ const sc = await db.from("schools").select("id, name, code").eq("id", mine.school_id).single(); S.school = sc.data || null; S.schoolRole = mine.role;
+      const w = await db.from("ns_windows").select("*").eq("school_id", mine.school_id); S.windows = w.error ? [] : (w.data || []); }
     else { S.school = null; S.schoolRole = ""; }
   }catch(e){ S.school = null; }
   S.schoolLoaded = true;
@@ -186,7 +192,7 @@ async function openClass(id, first){
     db.from("students").select("id, first_name, picture").eq("class_id", id).order("first_name"),
     db.from("ns_readers").select("*").eq("class_id", id),
     db.from("ns_tests").select("*").eq("class_id", id).order("created_at"),
-    db.from("ns_reads").select("id, student_id, band, text_id, comp, grammar, score, seconds, created_at").eq("class_id", id).order("created_at"),
+    db.from("ns_reads").select("id, student_id, band, text_id, comp, grammar, score, seconds, answers, created_at").eq("class_id", id).order("created_at"),
     db.from("ns_moves").select("*").eq("class_id", id).order("created_at")]);
   S.kids = k.data || []; S.readers = r.data || []; S.tests = t.data || []; S.reads = rd.data || []; S.moves = m.data || [];
   if(first) S.tab = S.kids.length && S.kids.every(k => testsOf(k.id).length) ? "class" : "start";
@@ -269,6 +275,12 @@ function printCards(){
   w.document.close();
 }
 function exportCSV(){
+  const ws = yearWindows(S.windows, pickYear(S.windows)), rows0 = S.kids.map(classChild);
+  const head0 = ["Child", "Baseline band", "Baseline reading age", "Baseline date", ...ws.map(w => w.title + (w.kind === "age" ? " (reading age)" : " (%)")), "Band now", "Reading age now", "Progress (months)", "Vs age (months)", "Main gap", "Next step for teacher", "Texts read"];
+  const body0 = rows0.map(c => [c.name, c.start ? bandName(c.start.band) : "", c.start ? fmtAge(c.start.ra) : "", c.start ? fmtDate(c.start.at) : "", ...ws.map(w => { const t = c.tests.find(x => x.window_id === w.id); return t ? (w.kind === "age" ? fmtAge(t.ra) : t.score) : ""; }),
+    c.band ? bandName(c.band) : "", c.now ? fmtAge(c.now.ra) : "", c.grew ?? "", c.gap ?? "", c.an.next[0] ? SKILL_NAMES[c.an.next[0].skill] : "", c.an.next[0] ? c.an.next[0].teacher : "", S.reads.filter(x => x.student_id === c.id).length]);
+  const csv0 = [head0, ...body0].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const a0 = document.createElement("a"); a0.href = URL.createObjectURL(new Blob(["\ufeff" + csv0], { type: "text/csv" })); a0.download = `Nestory-${S.cls.name}-tracker.csv`; a0.click(); return;
   const head = ["Child", "Starting band", "Starting reading age", "Start date", "Band now", "Band name", "Reading age now", "Progress (months)", "Estimated reading age at last test (months)", "Actual age (months)", "Gap (months)", "Last test", "Texts read", "Average last 5 (%)", "Progress rate", "RWI group", "Status"];
   const rows = S.kids.map(k => { const r = reader(k.id), t = lastTest(k.id), a = ageNow(r);
     const s0 = startOf(k.id), n0 = nowOf(k.id);
@@ -284,8 +296,8 @@ function render(){
   if(S.mode === "newpass") return app.innerHTML = `<div class="login"><img src="logo.png" alt="Nestory"><div class="card"><h2>Choose a new password</h2>${S.error ? `<div class="err">${esc(S.error)}</div>` : ""}<label>New password</label><input type="password" id="np"><button class="btn" style="margin-top:12px;width:100%;justify-content:center" onclick="newPass()">Save password</button></div></div>`;
   const alerts = S.kids.filter(k => ["down", "ready", "test", "slow"].includes(statusOf(k.id)[0])).length;
   app.innerHTML = `<div class="top"><div class="in"><a class="brand" href="index.html"><img src="bird.png" alt="">Nestory</a>
-    <div class="tabs">${[["start", "🏠 Start here"], ...(S.schoolRole === "admin" ? [["school", "🏫 Whole school"]] : []), ["class", "📋 My class"], ["alerts", `🔔 Alerts${alerts ? `<span class="n">${alerts}</span>` : ""}`], ["progress", "📈 Progress"], ["children", "🧒 Children"]].map(([k, l]) => `<button class="${S.tab === k ? "on" : ""}" onclick="S.tab='${k}';S.kid=null;render()">${l}</button>`).join("")}</div>
-    <span class="sp"></span>${S.classes && S.classes.length ? `<select style="width:auto" onchange="openClass(this.value)">${S.classes.map(c => `<option value="${c.id}" ${S.cls && S.cls.id === c.id ? "selected" : ""}>${esc(c.name)} · ${esc(c.grade)}</option>`).join("")}</select>` : ""}
+    <div class="tabs">${[["start", "🏠 Start here"], ...(S.schoolRole === "admin" ? [["school", "🏫 Whole school"]] : []), ["class", "📋 My class"], ["alerts", `🔔 Alerts${alerts ? `<span class="n">${alerts}</span>` : ""}`], ["progress", "📈 Tracker"], ["children", "🧒 Children"]].map(([k, l]) => `<button class="${S.tab === k ? "on" : ""}" onclick="S.tab='${k}';S.kid=null;render()">${l}</button>`).join("")}</div>
+    <span class="sp"></span>${S.classes && S.classes.length && S.tab !== "school" ? `<select style="width:auto" onchange="openClass(this.value)">${S.classes.map(c => `<option value="${c.id}" ${S.cls && S.cls.id === c.id ? "selected" : ""}>${esc(c.name)} · ${esc(c.grade)}</option>`).join("")}</select>` : ""}
     <button class="link hide-sm" onclick="signOut()">Sign out</button></div></div>
     <div class="main">${S.error ? `<div class="err">⚠️ ${esc(S.error)} <button class="link" onclick="S.error='';render()">OK</button></div>` : ""}${!S.classes ? `<div class="card empty">Loading…</div>` : !S.cls && !["children", "start", "school"].includes(S.tab) ? `<div class="card empty">🐣<br><br>Start with the 🏠 Start here tab to set up your class.</div>` : ({ start: startView, school: schoolView, class: classView, alerts: alertsView, progress: progressView, children: childrenView })[S.tab]()}</div>
     ${S.kid ? kidModal() : ""}`;
@@ -313,6 +325,9 @@ function startView(){
   const s5 = !kids.length ? `<p class="hint">Children see the reading test as soon as they sign in for the first time.</p>` : `<p><b>${tested} of ${kids.length}</b> children have taken the test.${tested ? " Their starting points are saved in the tracker." : ""}</p>
       <div class="prog-sm" style="height:10px;background:#EEF2F7;border-radius:8px;overflow:hidden;margin:8px 0"><i style="display:block;height:100%;width:${kids.length ? tested / kids.length * 100 : 0}%;background:#8FC9A8"></i></div>
       <p class="hint">The test takes about 10 to 15 minutes. Children see some example questions first, so they know what to do.</p>${tested ? `<button class="btn soft small" style="margin-top:8px" onclick="S.tab='progress';render()">📈 Open the tracker</button>` : ""}`;
+  const wsY = yearWindows(S.windows, pickYear(S.windows));
+  const s6 = `<p class="hint" style="margin-bottom:8px">Mid-term: a band check on an unseen text. End of term: the reading-age test again. Children see each check on their home page while it is open.</p>${wsY.length ? `<table>${wsY.map(w => `<tr><td><b>${esc(w.title)}</b></td><td class="hint">${fmtDate(w.opens)} – ${fmtDate(w.closes)}</td><td>${todayISO() > w.closes ? "✓ closed" : todayISO() >= w.opens ? `<span class="pill mid">open now</span>` : "coming"}</td></tr>`).join("")}</table>` : `<p>${S.schoolRole === "admin" ? `Set the dates in the <button class="link" onclick="S.tab='school';render()">🏫 Whole school</button> tab.` : "Your school admin will set the dates."}</p>`}`;
+  done.push(wsY.length > 0);
   return `<div class="card hero"><img src="bird.png" alt=""><div><h1 style="margin-bottom:6px">Welcome to Nestory</h1>
       <p>Nestory finds each child's <b>reading age</b> and <b>colour band</b> with a short reading test. Children then read texts at their band, answer questions and learn the National Curriculum grammar for their level. As they improve, they move up the colour bands, and you can see their progress over time.</p></div></div>
     <div class="card"><div class="lbl">How Nestory works</div><div class="how">
@@ -321,7 +336,7 @@ function startView(){
       <div><span class="n">3</span><b>🌟 Move up or down</b><p class="hint">80% over 5 texts unlocks a band check (70% to pass). Below 50% over 4 texts sends you an alert.</p></div>
       <div><span class="n">4</span><b>📈 Track progress</b><p class="hint">The tracker shows each child's starting point, their reading age now, and their band colour.</p></div></div></div>
     <div class="card"><div class="lbl">Get started: follow these steps</div>
-      ${step(0, "Join your school", s1)}${step(1, "Create your class", s2)}${step(2, "Add your children", s3)}${step(3, "Give the children their class code", s4)}${step(4, "Children take the reading test", s5)}</div>`;
+      ${step(0, "Join your school", s1)}${step(1, "Create your class", s2)}${step(2, "Add your children", s3)}${step(3, "Give the children their class code", s4)}${step(4, "Children take the reading test (their baseline)", s5)}${step(5, "Reading checks: twice a term", s6)}</div>`;
 }
 function classView(){
   const K = S.kids; if(!K.length) return `<div class="card empty">No children in ${esc(S.cls.name)} yet. Add them in the Children tab.</div>`;
@@ -369,21 +384,103 @@ function trackerCard(K){
   return `<div class="card" style="overflow-x:auto"><div class="lbl">📈 Reading tracker · starting point → now</div><div class="tracker">${head}${body}</div>
     <p class="hint" style="margin-top:10px">Each colour is a reading band. <b>Start</b> is the band from the first reading test. <b>Now</b> is the band today.${exp ? ` ★ is the expected band for ${esc(S.cls.grade)}.` : ""} Tap a child to see their chart.</p></div>`;
 }
-function progressView(){
-  const K = S.kids, counts = {}; K.forEach(k => { const b = reader(k.id).band; if(b) counts[b] = (counts[b] || 0) + 1; });
-  const max = Math.max(1, ...Object.values(counts)), exp = expectedBand(S.cls.grade);
-  const rates = K.map(k => [k, progressRate(k.id)]).filter(x => x[1] !== null).sort((a, b) => b[1] - a[1]);
-  const skills = {}; K.forEach(k => { const t = lastTest(k.id); if(t) Object.entries(t.skills || {}).forEach(([s, v]) => (skills[s] = skills[s] || []).push(v)); });
-  const terms = {}; S.tests.filter(t => t.kind === "test").forEach(t => { const g = gapOf(reader(t.student_id), t); if(g == null) return; const d = new Date(t.created_at), y = d.getMonth() >= 7 ? d.getFullYear() : d.getFullYear() - 1, key = `${y}/${String(y + 1).slice(2)} ` + (d.getMonth() >= 7 ? "Term 1" : d.getMonth() < 3 ? "Term 2" : "Term 3"); (terms[key] = terms[key] || []).push(g); });
-  const trk = trackerCard(K);
-  return `<h1 style="margin-bottom:14px">Progress · ${esc(S.cls.name)}</h1>
-    ${trk}
-    <div class="grid2">
-    <div class="card"><div class="lbl">Children in each band</div><div class="bars">${BANDS.slice(1).filter(b => counts[b[0]] || (exp && Math.abs(b[0] - exp) <= 3)).map(b => `<div class="b"><span>${b[1]}${b[0] === exp ? " ★" : ""}</span><div class="t"><i style="width:${(counts[b[0]] || 0) / max * 100}%;background:${b[2]};box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)"></i></div><span>${counts[b[0]] || 0}</span></div>`).join("")}</div>${exp ? `<p class="hint">★ expected band for ${esc(S.cls.grade)}</p>` : ""}</div>
-    <div class="card"><div class="lbl">Reading skills (latest tests, class average)</div><div class="bars">${Object.entries(skills).map(([s, v]) => { const a = Math.round(v.reduce((x, y) => x + y, 0) / v.length); return `<div class="b"><span>${SKILL_NAMES[s] || s}</span><div class="t"><i style="width:${a}%"></i></div><span>${a}%</span></div>`; }).join("") || `<p class="hint">Appears after the first tests.</p>`}</div></div>
-    <div class="card"><div class="lbl">Progress rate between the last two tests</div>${rates.length ? `<div class="bars">${rates.map(([k, r]) => `<div class="b"><span>${esc(k.first_name)}</span><div class="t"><i style="width:${Math.min(100, r / 2 * 100)}%;background:${r >= 1 ? "#8FC9A8" : "#F1C27D"}"></i></div><span>${r}</span></div>`).join("")}</div><p class="hint">1.0 = expected progress · above 1.0 = accelerated · below 1.0 = slower than expected</p>` : `<p class="hint">Appears once children have taken two tests at least a month apart.</p>`}</div>
-    <div class="card"><div class="lbl">Average gap (reading age − actual age) by term</div>${Object.keys(terms).length ? `<div class="bars">${Object.entries(terms).sort().map(([t, v]) => { const a = Math.round(v.reduce((x, y) => x + y, 0) / v.length); return `<div class="b"><span>${t}</span><div class="t"><i style="width:${Math.min(100, Math.abs(a) / 24 * 100)}%;background:${a >= 0 ? "#8FC9A8" : "#E6B8A8"}"></i></div><span>${a >= 0 ? "+" : ""}${a}m</span></div>`; }).join("")}</div>` : `<p class="hint">Add birth months to see reading age compared with actual age.</p>`}</div></div>`;
+/* ---------- tracker: baseline, the six checks, now ---------- */
+const todayISO = () => new Date().toISOString().slice(0, 10);
+function acYear(d){ const x = d ? new Date(d) : new Date(), y = x.getMonth() >= 7 ? x.getFullYear() : x.getFullYear() - 1; return `${y}-${String(y + 1).slice(2)}`; }
+function yearWindows(list, year){ return (list || []).filter(w => w.year_label === year).sort((a, b) => a.idx - b.idx); }
+function yearsOf(list){ const ys = [...new Set((list || []).map(w => w.year_label))].sort(); return ys.length ? ys : [acYear()]; }
+function pickYear(list){ const ys = yearsOf(list); if(S.year && ys.includes(S.year)) return S.year; return ys.includes(acYear()) ? acYear() : ys[ys.length - 1]; }
+function normChild(c){
+  const j = buildJourney(c.tests.filter(t => t.kind === "test"), c.moves, c.birth), age = ageAt({ birth_month: c.birth });
+  const an = analyseChild({ first_name: c.name, band: c.band, grade: c.grade, journey: j, tests: c.tests, reads: c.reads || [] });
+  return Object.assign({}, c, { j, start: j[0] || null, now: j[j.length - 1] || null, grew: j.length ? j[j.length - 1].ra - j[0].ra : null,
+    gap: j.length && age != null ? j[j.length - 1].ra - age : null, exp: expectedBand(c.grade), an });
 }
+function classChild(k){
+  const r = reader(k.id);
+  return normChild({ id: k.id, name: k.first_name, pic: k.picture, band: r.band, grade: S.cls.grade, birth: r.birth_month,
+    tests: S.tests.filter(t => t.student_id === k.id).map(t => ({ at: t.created_at, kind: t.kind, band: t.band, ra: t.reading_age, score: t.score, skills: t.skills, window_id: t.window_id })),
+    moves: S.moves.filter(m => m.student_id === k.id).map(m => ({ at: m.created_at, from: m.from_band, to: m.to_band, reason: m.reason })),
+    reads: S.reads.filter(x => x.student_id === k.id).map(x => Object.assign({ at: x.created_at }, x)) });
+}
+const scoreCls = v => v >= 80 ? "up" : v >= 60 ? "mid" : "dn";
+const dot = b => b ? `<i class="bdot" style="background:${bandColour(b)}" title="${bandName(b)}"></i>` : "";
+function checkCell(c, w){
+  const t = c.tests.find(x => x.window_id === w.id), td = todayISO();
+  if(t) return w.kind === "age" ? `<b>${fmtAge(t.ra)}</b><br>${dot(t.band)}<span class="hint">${bandName(t.band)}</span>` : `<span class="pill ${scoreCls(t.score)}">${t.score}%</span><br>${dot(t.band)}<span class="hint">${bandName(t.band)}</span>`;
+  if(td > w.closes) return `<span class="hint">missed</span>`;
+  if(td >= w.opens) return `<span class="pill mid">open</span>`;
+  return `<span class="hint">–</span>`;
+}
+function groupCell(rows, w){
+  const done = rows.map(c => c.tests.find(x => x.window_id === w.id)).filter(Boolean); if(!done.length) return `<span class="hint">–</span>`;
+  if(w.kind === "age"){ const a = avgOf(done.map(t => t.ra)); return `<b>${fmtAge(a)}</b><br><span class="hint">${done.length}/${rows.length} done</span>`; }
+  const a = avgOf(done.map(t => t.score)); return `<span class="pill ${scoreCls(a)}">${a}%</span><br><span class="hint">${done.length}/${rows.length} done</span>`;
+}
+const raBand = e => e ? `<b>${fmtAge(e.ra)}</b><br>${dot(e.band)}<span class="hint">${bandName(e.band)}</span>` : `<span class="hint">Not tested</span>`;
+const nextChip = c => { const s = c.an.gaps[0] || c.an.developing[0]; return s ? `<span class="chip" style="padding:3px 10px">${SKILL_NAMES[s.skill] || s.skill}</span>` : c.an.enough ? `<span class="hint">On track</span>` : `<span class="hint">–</span>`; };
+function trackerHead(ws, first, last){
+  return `<tr><th>${first}</th><th>Baseline</th>${ws.map(w => `<th title="${esc(w.title)}">${esc(CHECKS[w.idx - 1].short)}<br><span class="hint" style="text-transform:none;letter-spacing:0;font-weight:700">${w.kind === "age" ? "reading age" : "band check"}</span></th>`).join("")}<th>Now</th><th>Progress</th><th>Vs age</th><th>${last}</th></tr>`;
+}
+function childTrackRow(c, ws, click){
+  return `<tr class="${click ? "click" : ""}" ${click ? `onclick="${click}"` : ""}><td><b>${esc(c.pic || "")} ${esc(c.name)}</b>${c.start ? `<br><span class="hint">since ${fmtDate(c.start.at)}</span>` : ""}</td><td>${raBand(c.start)}</td>${ws.map(w => `<td>${checkCell(c, w)}</td>`).join("")}
+    <td>${c.j.length > 1 ? raBand(c.now) : c.now ? `<span class="hint">same</span>` : "–"}</td><td>${c.grew == null ? "–" : `<span class="gap ${c.grew > 0 ? "up" : c.grew < 0 ? "dn" : ""}">${signed(c.grew)}</span>`}</td>
+    <td>${c.gap == null ? `<span class="hint" title="Add the child's birth month in their profile">${c.now ? "no DOB" : "–"}</span>` : `<span class="gap ${c.gap >= 0 ? "up" : "dn"}">${signed(c.gap)}</span>`}</td><td>${nextChip(c)}</td></tr>`;
+}
+function groupTrackRow(label, sub, rows, ws, click, open){
+  const T = rows.filter(c => c.start), E = T.filter(c => c.exp), gaps = T.filter(c => c.gap != null);
+  return `<tr class="grp ${click ? "click" : ""}" ${click ? `onclick="${click}"` : ""}><td><b>${click ? (open ? "▾ " : "▸ ") : ""}${esc(label)}</b><br><span class="hint">${esc(sub || "")}${sub ? " · " : ""}${rows.length} children · ${T.length} tested</span></td>
+    <td>${T.length ? `<b>${fmtAge(avgOf(T.map(c => c.start.ra)))}</b><br><span class="hint">average</span>` : "–"}</td>${ws.map(w => `<td>${groupCell(rows, w)}</td>`).join("")}
+    <td>${T.length ? `<b>${fmtAge(avgOf(T.map(c => c.now.ra)))}</b>` : "–"}</td><td>${T.length ? `<span class="gap ${avgOf(T.map(c => c.grew)) > 0 ? "up" : ""}">${signed(avgOf(T.map(c => c.grew)))}</span>` : "–"}</td>
+    <td>${gaps.length ? `<span class="gap ${avgOf(gaps.map(c => c.gap)) >= 0 ? "up" : "dn"}">${signed(avgOf(gaps.map(c => c.gap)))}</span>` : "–"}</td><td>${E.length ? `<b>${pct(E.filter(c => c.band >= c.exp).length, E.length)}</b><br><span class="hint">at or above expected</span>` : "–"}</td></tr>`;
+}
+function datesNote(ws, admin){
+  if(ws.length) return "";
+  return `<div class="alert" style="background:var(--amber)"><div class="tx"><b>📅 The six reading checks haven't been given dates yet.</b><br><span class="hint">${admin ? "Set them in the 🏫 Whole school tab." : S.school ? "Your school admin sets them in the Whole school tab." : "Join your school first (🏠 Start here), then your school admin sets the dates."}</span></div></div>`;
+}
+function groupsCard(rows){
+  const gg = gapGroups(rows.filter(c => c.an.enough).map(c => ({ name: c.name, analysis: c.an })));
+  return `<div class="card"><div class="lbl">🎯 Next-step groups</div>${gg.length ? gg.map(([sk, names]) => `<div class="alert" style="background:var(--sky2);align-items:flex-start"><div class="tx"><b>${SKILL_NAMES[sk] || sk}</b> · ${names.length} ${names.length === 1 ? "child" : "children"}: ${names.map(esc).join(", ")}<br><span class="hint">${esc(NEXT_STEPS[sk].teacher)}</span></div></div>`).join("")
+    : `<p class="hint">Groups appear once children have taken a check or read a few texts.</p>`}<p class="hint" style="margin-top:6px">Based on the reading test, the band checks and the questions children answer in their texts. A skill is a gap below 60% and developing from 60% to 79%.</p></div>`;
+}
+function skillBars(prof){
+  const e = Object.entries(prof).sort((a, b) => SKILL_ORDER.indexOf(a[0]) - SKILL_ORDER.indexOf(b[0]));
+  return e.length ? `<div class="bars">${e.map(([s, v]) => `<div class="b"><span>${SKILL_NAMES[s] || s}</span><div class="t"><i style="width:${v}%;background:${v >= 80 ? "#8FC9A8" : v >= 60 ? "#F1C27D" : "#E6A595"}"></i></div><span>${v}%</span></div>`).join("")}</div>` : `<p class="hint">Appears after the first check or a few texts.</p>`;
+}
+function progressView(){
+  const ws = yearWindows(S.windows, pickYear(S.windows)), rows = S.kids.map(classChild), years = yearsOf(S.windows);
+  const prof = {}; rows.forEach(c => Object.entries(c.an.profile).forEach(([s, v]) => (prof[s] = prof[s] || []).push(v)));
+  const classProf = Object.fromEntries(Object.entries(prof).map(([s, v]) => [s, avgOf(v)]));
+  return `<div class="row between" style="margin-bottom:14px"><h1>Tracker · ${esc(S.cls.name)}</h1><div class="row">${years.length > 1 ? `<select style="width:auto" onchange="S.year=this.value;render()">${years.map(y => `<option ${y === pickYear(S.windows) ? "selected" : ""}>${y}</option>`).join("")}</select>` : `<span class="hint">${pickYear(S.windows)}</span>`}<button class="btn soft small" onclick="exportCSV()">⬇️ Excel (CSV)</button></div></div>
+    ${datesNote(ws, S.schoolRole === "admin")}
+    <div class="card" style="overflow-x:auto"><div class="lbl">📈 Reading tracker: baseline → checks → now</div>
+      <table class="trk">${trackerHead(ws, "Child", "Next step")}${rows.map(c => childTrackRow(c, ws, `S.kid='${c.id}';render()`)).join("")}${groupTrackRow("Class average", "", rows, ws)}</table>
+      <p class="hint" style="margin-top:10px"><b>Baseline</b> is each child's first reading test. Mid-term <b>band checks</b> show the % correct on an unseen text at the child's band (green 80%+, amber 60–79%, pink below 60%). End-of-term checks give a new <b>reading age</b>. <b>Vs age</b> compares the reading age now with the child's real age. Tap a child for their full profile.</p></div>
+    <div class="grid2">${groupsCard(rows)}<div class="card"><div class="lbl">Class reading skills</div>${skillBars(classProf)}</div></div>
+    ${trackerCard(S.kids)}`;
+}
+/* ---------- check dates (school admins) ---------- */
+function suggestDates(year){
+  const y = +year.slice(0, 4), d = (yy, m, dd) => `${yy}-${String(m).padStart(2, "0")}-${String(dd).padStart(2, "0")}`;
+  return [[d(y, 10, 12), d(y, 10, 23)], [d(y, 11, 30), d(y, 12, 11)], [d(y + 1, 2, 8), d(y + 1, 2, 19)], [d(y + 1, 3, 15), d(y + 1, 3, 26)], [d(y + 1, 5, 10), d(y + 1, 5, 21)], [d(y + 1, 6, 14), d(y + 1, 6, 25)]];
+}
+function datesCard(list){
+  const year = S.editYear || pickYear(list), ws = yearWindows(list, year), sug = suggestDates(year);
+  return `<div class="card"><div class="row between"><div class="lbl">📅 Reading check dates</div><div class="row"><label style="margin:0">School year</label><input id="wy" value="${esc(year)}" style="width:110px" onchange="S.editYear=this.value;render()"><button class="btn soft small" onclick="fillSuggested()">Fill suggested dates</button></div></div>
+    <p class="hint" style="margin:4px 0 10px">Two checks a term. Mid-term: an unseen text at each child's band. End of term: the full reading-age test with unseen passages. Each check opens for every class on the first date and closes on the second.</p>
+    <table><tr><th>Check</th><th>What children do</th><th>Opens</th><th>Closes</th></tr>${CHECKS.map((c, i) => { const w = ws.find(x => x.idx === c.idx);
+      return `<tr><td><b>${c.title}</b></td><td class="hint">${c.kind === "age" ? "Reading-age test" : "Band check"}</td><td><input type="date" id="wo${c.idx}" value="${w ? w.opens : ""}" data-s="${sug[i][0]}"></td><td><input type="date" id="wc${c.idx}" value="${w ? w.closes : ""}" data-s="${sug[i][1]}"></td></tr>`; }).join("")}</table>
+    <button class="btn" style="margin-top:12px" onclick="saveDates()">Save check dates</button></div>`;
+}
+function fillSuggested(){ CHECKS.forEach(c => { ["wo", "wc"].forEach(p => { const el = $("#" + p + c.idx); if(el && !el.value) el.value = el.dataset.s; }); }); toast("Suggested dates added. Change any you need, then save."); }
+async function saveDates(){
+  const year = $("#wy").value.trim() || acYear(), list = [];
+  for(const c of CHECKS){ const o = $("#wo" + c.idx).value, cl = $("#wc" + c.idx).value; if(!o && !cl) continue; if(!o || !cl){ S.error = `Please give ${c.title} both dates.`; return render(); } list.push({ idx: c.idx, kind: c.kind, title: c.title, opens: o, closes: cl }); }
+  const { error } = await db.rpc("ns_set_windows", { p_year: year, p_windows: list });
+  if(error){ S.error = errMsg(error); return render(); }
+  S.error = ""; S.editYear = year; S.year = year; toast("Check dates saved for the whole school ✓"); await loadSchool(); S.sch = null; render();
+}
+
 function childrenView(){
   return `<div class="grid2"><div>${S.cls ? `<div class="card"><div class="lbl">${esc(S.cls.name)} · class code for children</div><div class="codebox"><b>${esc(S.cls.code)}</b></div>
       <p class="hint" style="margin-top:10px">Children go to <b>nestory.thinknest.education/read.html</b>, type this code, tap their name and their secret picture. It's the same code and picture as WonderNest.</p>
@@ -397,38 +494,58 @@ async function loadSchoolOverview(){
   const { data, error } = await db.rpc("ns_school_overview");
   S.sch = error ? { error: errMsg(error) } : (data || { classes: [], children: [] }); render();
 }
+
 function schoolKids(){
-  const o = S.sch; return o.children.map(c => { const cls = o.classes.find(x => x.id === c.class_id) || {}, j = buildJourney(c.tests || [], c.moves || [], c.birth), exp = expectedBand(cls.grade);
-    return Object.assign({}, c, { cls, j, exp, start: j[0] || null, now: j[j.length - 1] || null, grew: j.length ? j[j.length - 1].ra - j[0].ra : null }); });
+  const o = S.sch;
+  return o.children.map(c => { const cls = o.classes.find(x => x.id === c.class_id) || {};
+    return Object.assign(normChild({ id: c.id, class_id: c.class_id, name: c.name, band: c.band, grade: cls.grade, birth: c.birth, tests: c.tests || [], moves: c.moves || [], reads: [] }), { cls, reads: c.reads, recent: c.recent }); });
 }
 function bandBar(list){
   const n = list.length || 1, counts = {}; list.forEach(k => { if(k.band) counts[k.band] = (counts[k.band] || 0) + 1; });
   return `<div style="display:flex;height:16px;border-radius:8px;overflow:hidden;background:#F1F3F6;min-width:140px">${Object.keys(counts).map(Number).sort((a, b) => a - b).map(b => `<i title="${bandName(b)}: ${counts[b]}" style="width:${counts[b] / n * 100}%;background:${b ? bandColour(b) : "#F1F3F6"};box-shadow:inset -1px 0 0 #fff"></i>`).join("")}</div>`;
 }
 const pct = (a, b) => b ? Math.round(a / b * 100) + "%" : "–";
-const avgOf = a => a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length) : null;
+const avgOf = a => { a = a.filter(x => x != null); return a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length) : null; };
 const signed = v => v == null ? "–" : (v > 0 ? "+" : "") + v + "m";
+function gradeKey(g){ const y = yearOf(g); return y == null ? (g || "Other") : y < 1 ? (y === -1 ? "FS1" : "FS2") : "Year " + y; }
 function schoolView(){
   if(!S.sch){ loadSchoolOverview(); return `<div class="card empty">Loading the whole school…</div>`; }
-  if(S.sch.error) return `<div class="card"><h2>🏫 Whole school</h2><p class="hint" style="margin-top:8px">The whole-school view needs a small update in Supabase (nestory-update-2.sql). ${esc(S.sch.error)}</p></div>`;
-  const K = schoolKids(), tested = K.filter(k => k.start), atExp = tested.filter(k => k.exp && k.band >= k.exp), withExp = tested.filter(k => k.exp);
-  const groups = {}; K.forEach(k => { const y = yearOf(k.cls.grade), key = y == null ? (k.cls.grade || "Other") : y < 1 ? (y === -1 ? "FS1" : "FS2") : "Year " + y; (groups[key] = groups[key] || []).push(k); });
+  if(S.sch.error) return `<div class="card"><h2>🏫 Whole school</h2><p class="hint" style="margin-top:8px">The whole-school view needs the Supabase update (nestory-update-2.sql). ${esc(S.sch.error)}</p></div>`;
+  const K = schoolKids(), year = pickYear(S.sch.windows), ws = yearWindows(S.sch.windows, year), tested = K.filter(k => k.start), E = tested.filter(k => k.exp);
+  const groups = {}; K.forEach(k => (groups[gradeKey(k.cls.grade)] = groups[gradeKey(k.cls.grade)] || []).push(k));
   const order = Object.keys(groups).sort((a, b) => (yearOf(groups[a][0].cls.grade) ?? 99) - (yearOf(groups[b][0].cls.grade) ?? 99));
+  S.open = S.open || {};
+  const body = order.map(g => { const L = groups[g], og = S.open["g:" + g];
+    let h = groupTrackRow(g, `expected: ${bandName(expectedBand(L[0].cls.grade))}`, L, ws, `S.open['g:${g}']=!S.open['g:${g}'];render()`, og);
+    if(og) S.sch.classes.filter(c => gradeKey(c.grade) === g).forEach(c => { const CL = L.filter(k => k.class_id === c.id), oc = S.open["c:" + c.id];
+      h += groupTrackRow("　" + c.name, c.grade, CL, ws, `S.open['c:${c.id}']=!S.open['c:${c.id}'];render()`, oc).replace('class="grp', 'class="grp sub');
+      if(oc) h += CL.map(k => childTrackRow(Object.assign({}, k, { name: "　　" + k.name }), ws)).join(""); });
+    return h; }).join("");
+  // skill gaps by year group
+  const skills = SKILL_ORDER.filter(s => K.some(k => k.an.profile[s] != null));
+  const heat = order.map(g => { const L = groups[g].filter(k => k.an.enough);
+    const cells = skills.map(s => { const have = L.filter(k => k.an.profile[s] != null); if(!have.length) return `<td class="hint">–</td>`; const p = Math.round(have.filter(k => k.an.profile[s] < 60).length / have.length * 100);
+      return `<td style="background:${p >= 40 ? "#F6D5CC" : p >= 20 ? "#FBEBC8" : "#E2F1E8"};font-weight:800;text-align:center">${p}%</td>`; }).join("");
+    const counts = skills.map(s => [s, L.filter(k => k.an.profile[s] != null && k.an.profile[s] < 60).length]).sort((a, b) => b[1] - a[1]), top = counts[0] && counts[0][1] ? counts[0][0] : null;
+    return `<tr><td><b>${esc(g)}</b><br><span class="hint">${L.length} with data</span></td>${cells}<td style="min-width:240px">${top ? `<b>${SKILL_NAMES[top]}</b><br><span class="hint">${esc(NEXT_STEPS[top].teacher)}</span>` : `<span class="hint">No common gap</span>`}</td></tr>`; }).join("");
   const behind = tested.filter(k => k.exp && k.band <= k.exp - 2).sort((a, b) => (a.band - a.exp) - (b.band - b.exp));
-  const rowFor = (label, L, sub) => { const T = L.filter(k => k.start), E = T.filter(k => k.exp);
-    return `<tr><td><b>${esc(label)}</b>${sub ? `<br><span class="hint">${esc(sub)}</span>` : ""}</td><td>${L.length}</td><td>${pct(T.length, L.length)}</td><td>${pct(E.filter(k => k.band >= k.exp).length, E.length)}</td><td>${signed(avgOf(T.map(k => k.grew)))}</td><td>${L.reduce((a, k) => a + (k.reads || 0), 0)}</td><td>${bandBar(T)}</td></tr>`; };
-  return `<div class="row between" style="margin-bottom:14px"><h1>🏫 ${esc(S.school ? S.school.name : "Whole school")}</h1><div class="row"><button class="btn soft small" onclick="S.sch=null;render()">↻ Refresh</button><button class="btn soft small" onclick="exportSchoolCSV()">⬇️ Excel (CSV)</button></div></div>
-    <div class="stats"><div class="stat"><small>Children</small><b>${K.length}</b></div><div class="stat"><small>Tested</small><b>${pct(tested.length, K.length)}</b></div>
-      <div class="stat"><small>At or above expected band</small><b>${pct(atExp.length, withExp.length)}</b></div><div class="stat"><small>Average progress since start</small><b>${signed(avgOf(tested.map(k => k.grew)))}</b></div>
+  return `<div class="row between" style="margin-bottom:14px"><h1>🏫 ${esc(S.school ? S.school.name : "Whole school")}</h1><div class="row">${yearsOf(S.sch.windows).length > 1 ? `<select style="width:auto" onchange="S.year=this.value;render()">${yearsOf(S.sch.windows).map(y => `<option ${y === year ? "selected" : ""}>${y}</option>`).join("")}</select>` : `<span class="hint">${year}</span>`}<button class="btn soft small" onclick="S.sch=null;render()">↻ Refresh</button><button class="btn soft small" onclick="exportSchoolCSV()">⬇️ Excel (CSV)</button></div></div>
+    <div class="stats"><div class="stat"><small>Children</small><b>${K.length}</b></div><div class="stat"><small>Baseline taken</small><b>${pct(tested.length, K.length)}</b></div>
+      <div class="stat"><small>At or above expected band</small><b>${pct(E.filter(k => k.band >= k.exp).length, E.length)}</b></div><div class="stat"><small>Average progress since baseline</small><b>${signed(avgOf(tested.map(k => k.grew)))}</b></div>
       <div class="stat"><small>Texts read</small><b>${K.reduce((a, k) => a + (k.reads || 0), 0)}</b></div></div>
-    <div class="card" style="overflow-x:auto"><div class="lbl">By year group</div><table><tr><th>Year group</th><th>Children</th><th>Tested</th><th>At or above expected</th><th>Average progress</th><th>Texts read</th><th>Bands</th></tr>${order.map(g => rowFor(g, groups[g], `expected band: ${bandName(expectedBand(groups[g][0].cls.grade))}`)).join("")}</table></div>
-    <div class="card" style="overflow-x:auto"><div class="lbl">By class</div><table><tr><th>Class</th><th>Children</th><th>Tested</th><th>At or above expected</th><th>Average progress</th><th>Texts read</th><th>Bands</th></tr>${S.sch.classes.map(c => rowFor(c.name, K.filter(k => k.class_id === c.id), c.grade)).join("")}</table>
-      <p class="hint" style="margin-top:8px">Bands shows how many tested children are in each colour band. Progress is the change in reading age since each child's first test.</p></div>
-    <div class="card"><div class="lbl">Children two or more bands below expected (${behind.length})</div>${behind.length ? `<table><tr><th>Child</th><th>Class</th><th>Band now</th><th>Expected</th><th>Progress</th></tr>${behind.map(k => `<tr><td><b>${esc(k.name)}</b></td><td>${esc(k.cls.name)}</td><td>${chip(k.band)}</td><td>${chip(k.exp)}</td><td>${signed(k.grew)}</td></tr>`).join("")}</table>` : `<p class="hint">No children are two or more bands below expected. 🎉</p>`}</div>`;
+    ${ws.length ? "" : datesNote(ws, true)}
+    <div class="card" style="overflow-x:auto"><div class="lbl">📈 Whole-school tracker: year group → class → child</div><table class="trk">${trackerHead(ws, "Group", "Expected band")}${body}${groupTrackRow("Whole school", "", K, ws)}</table>
+      <p class="hint" style="margin-top:10px">Tap a year group to see its classes, and a class to see each child. Baseline is each child's first reading test. Mid-term band checks show the average % correct; end-of-term checks show the average reading age.</p></div>
+    <div class="card" style="overflow-x:auto"><div class="lbl">🎯 Skill gaps by year group</div>${heat ? `<table><tr><th>Year group</th>${skills.map(s => `<th style="text-align:center">${SKILL_NAMES[s]}</th>`).join("")}<th>Main focus</th></tr>${heat}</table><p class="hint" style="margin-top:8px">The % of children in each year group for whom the skill is a gap (below 60%). Green below 20%, amber 20–39%, pink 40% or more.</p>` : `<p class="hint">Appears after the first checks.</p>`}</div>
+    <div class="card"><div class="lbl">Children two or more bands below expected (${behind.length})</div>${behind.length ? `<table><tr><th>Child</th><th>Class</th><th>Band now</th><th>Expected</th><th>Progress</th><th>Main gap</th></tr>${behind.map(k => `<tr><td><b>${esc(k.name)}</b></td><td>${esc(k.cls.name)}</td><td>${chip(k.band)}</td><td>${chip(k.exp)}</td><td>${signed(k.grew)}</td><td>${nextChip(k)}</td></tr>`).join("")}</table>` : `<p class="hint">No children are two or more bands below expected. 🎉</p>`}</div>
+    ${S.schoolRole === "admin" ? datesCard(S.sch.windows) : ""}`;
 }
 function exportSchoolCSV(){
-  const K = schoolKids(), head = ["Class", "Year group", "Child", "Starting band", "Starting reading age", "Start date", "Band now", "Reading age now", "Progress (months)", "Expected band", "At or above expected", "Texts read"];
-  const rows = K.map(k => [k.cls.name, k.cls.grade, k.name, k.start ? bandName(k.start.band) : "", k.start ? fmtAge(k.start.ra) : "", k.start ? fmtDate(k.start.at) : "", k.band ? bandName(k.band) : "", k.now ? fmtAge(k.now.ra) : "", k.grew ?? "", k.exp ? bandName(k.exp) : "", k.start && k.exp ? (k.band >= k.exp ? "Yes" : "No") : "", k.reads || 0]);
+  const K = schoolKids(), ws = yearWindows(S.sch.windows, pickYear(S.sch.windows));
+  const head = ["Class", "Year group", "Child", "Baseline band", "Baseline reading age", "Baseline date", ...ws.map(w => w.title + (w.kind === "age" ? " (reading age)" : " (%)")), "Band now", "Reading age now", "Progress (months)", "Vs age (months)", "Expected band", "At or above expected", "Main gap", "Texts read"];
+  const rows = K.map(k => [k.cls.name, k.cls.grade, k.name, k.start ? bandName(k.start.band) : "", k.start ? fmtAge(k.start.ra) : "", k.start ? fmtDate(k.start.at) : "",
+    ...ws.map(w => { const t = k.tests.find(x => x.window_id === w.id); return t ? (w.kind === "age" ? fmtAge(t.ra) : t.score) : ""; }),
+    k.band ? bandName(k.band) : "", k.now ? fmtAge(k.now.ra) : "", k.grew ?? "", k.gap ?? "", k.exp ? bandName(k.exp) : "", k.start && k.exp ? (k.band >= k.exp ? "Yes" : "No") : "", (k.an.gaps[0] && SKILL_NAMES[k.an.gaps[0].skill]) || "", k.reads || 0]);
   const csv = [head, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
   const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv" })); a.download = `Nestory-whole-school.csv`; a.click();
 }
@@ -443,6 +560,7 @@ const HOME_TIPS = b => b <= 4 ? ["Share picture books every day and talk about t
 function parentReport(id){
   const k = S.kids.find(x => x.id === id), r = reader(id), j = journey(id), s0 = j[0], n0 = j[j.length - 1], t = lastTest(id), rd = S.reads.filter(x => x.student_id === id), last5 = rd.slice(-5);
   if(!s0) return toast(`${k.first_name} hasn't taken the reading test yet`);
+  const cc = classChild(k), an = cc.an;
   const gr = n0.ra - s0.ra, avg = last5.length ? Math.round(last5.reduce((a, x) => a + x.comp, 0) / last5.length) : null, base = location.href.replace(/[^/]*$/, "");
   const box = (label, e, sub) => `<div class="b"><small>${label}</small><div class="dot" style="background:${bandColour(e.band)}"></div><b>${bandName(e.band)}</b><span>Reading age ${fmtAge(e.ra)}</span><em>${sub}</em></div>`;
   const w = window.open("", "_blank"); if(!w) return toast("Please allow pop-ups to open the report");
@@ -459,10 +577,11 @@ function parentReport(id){
     <h2>Reading journey</h2><div class="boxes">${box("Starting point", s0, fmtDate(s0.at))}${box("Now", n0, j.length > 1 ? fmtDate(n0.at) : "same as start")}
       <div class="b"><small>Progress</small><div class="big">${gr > 0 ? "+" : ""}${gr} months</div><em>${gr > 0 ? "growth in reading age since the first test" : "since the first test"}</em>${r.birth_month ? `<em style="margin-top:6px">Age now: ${fmtAge(ageNow(r))}</em>` : ""}</div></div>
     <h2>Reading age over time</h2>${svgReading(id)}
-    <div class="two"><div><h2>Reading skills (latest test)</h2>${t ? `<div class="bars">${Object.entries(t.skills || {}).map(([s, v]) => `<div><span>${SKILL_NAMES[s] || s}</span><span class="t"><i style="width:${v}%"></i></span><span>${v}%</span></div>`).join("")}</div>` : `<p class="muted">No test yet.</p>`}
+    <div class="two"><div><h2>Reading skills</h2>${Object.keys(an.profile).length ? `<div class="bars">${Object.entries(an.profile).sort((a, b) => SKILL_ORDER.indexOf(a[0]) - SKILL_ORDER.indexOf(b[0])).map(([s, v]) => `<div><span>${SKILL_NAMES[s] || s}</span><span class="t"><i style="width:${v}%;background:${v >= 80 ? "#8FC9A8" : v >= 60 ? "#F1C27D" : "#E6A595"}"></i></span><span>${v}%</span></div>`).join("")}</div>` : `<p class="muted">Appears after the first check.</p>`}
       <h2>Reading in school</h2><p><b>${rd.length}</b> ${rd.length === 1 ? "text" : "texts"} read in Nestory${avg != null ? `, with an average of <b>${avg}%</b> for understanding over the last ${last5.length}` : ""}.</p>
       <p style="margin-top:6px"><b>Grammar ${esc(k.first_name)} is learning now:</b> ${esc(BANDS[r.band || n0.band][6])}.</p></div>
-      <div><h2>How you can help at home</h2><ul>${HOME_TIPS(r.band || n0.band).map(x => `<li>${esc(x)}</li>`).join("")}</ul>
+      <div>${an.strengths.length ? `<h2>What ${esc(k.first_name)} does well</h2><p>${an.strengths.slice(0, 3).map(x => SKILL_NAMES[x.skill]).join(", ")}.</p>` : ""}
+      <h2>Next steps and how you can help</h2><ul>${[...an.next.map(n => `<b>${SKILL_NAMES[n.skill]}:</b> ${esc(n.parent)}`), ...an.flags.filter(f => f.parent).map(f => esc(f.parent)), ...(an.next.length ? [] : HOME_TIPS(r.band || n0.band).map(esc))].slice(0, 4).map(x => `<li>${x}</li>`).join("")}</ul>
       <h2>Teacher's comment</h2><div class="lines"><div></div><div></div><div></div><div></div></div></div></div>
     <p class="muted" style="margin-top:14px;font-size:11px">Colour bands show the level of books ${esc(k.first_name)} is reading. Reading age is an estimate from the Nestory reading test and band checks.</p>
     </body></html>`);
@@ -479,14 +598,30 @@ function svgReading(id){
     ${line("aa", "#C9D2DE", true)}${pts.map((p, i) => p.aa == null ? "" : `<circle cx="${x(i)}" cy="${y(p.aa)}" r="4" fill="#C9D2DE"/>`).join("")}${line("ra", "#5F8FCB")}${pts.map((p, i) => `<circle cx="${x(i)}" cy="${y(p.ra)}" r="8" fill="${bandColour(p.band)}" stroke="#5F8FCB" stroke-width="2.5"><title>${bandName(p.band)} · ${fmtAge(p.ra)}</title></circle>${i === 0 ? `<text x="${x(i)}" y="${y(p.ra) - 13}" font-size="11" font-weight="bold" fill="#44546F" text-anchor="middle">Start</text>` : ""}<text x="${x(i)}" y="${H - 8}" font-size="11" fill="#6B7689" text-anchor="middle">${fmtDate(p.d)}</text>`).join("")}</svg>
     <p class="hint"><span style="color:#5F8FCB;font-weight:900">━</span> Reading age (dots show the band colour) ${r.birth_month ? `<span style="color:#9AA5B5;font-weight:900;margin-left:10px">┅</span> Actual age` : "· add a birth month to compare with actual age"}</p>`;
 }
+function insightHTML(c){
+  const an = c.an; if(!an.enough && !an.flags.length) return `<p class="hint">Appears after the first check or a few texts.</p>`;
+  const line = (ic, title, text) => `<div class="sn"><div style="font-size:20px">${ic}</div><div><b>${title}</b>${text ? `<br><span class="hint">${esc(text)}</span>` : ""}</div></div>`;
+  return (an.strengths.length ? line("⭐", "Strengths: " + an.strengths.slice(0, 3).map(x => `${SKILL_NAMES[x.skill]} (${x.pct}%)`).join(", "), "") : "")
+    + an.next.map(n => line("🎯", `${SKILL_NAMES[n.skill]} (${n.pct}%)`, n.teacher)).join("")
+    + an.flags.map(f => line(f.level === "good" ? "🌟" : f.level === "high" ? "⚠️" : "💡", "", f.teacher)).join("");
+}
+function checksTable(c){
+  const ws = yearWindows(S.windows, pickYear(S.windows)), rows = [];
+  if(c.start) rows.push(`<tr><td><b>Baseline</b><br><span class="hint">${fmtDate(c.start.at)}</span></td><td>${dot(c.start.band)}${bandName(c.start.band)}</td><td><b>${fmtAge(c.start.ra)}</b></td></tr>`);
+  ws.forEach(w => { const t = c.tests.find(x => x.window_id === w.id);
+    rows.push(`<tr><td><b>${esc(w.title)}</b><br><span class="hint">${fmtDate(w.opens)} – ${fmtDate(w.closes)}</span></td><td>${t ? dot(t.band) + bandName(t.band) : ""}</td><td>${t ? (w.kind === "age" ? `<b>${fmtAge(t.ra)}</b>` : `<span class="pill ${scoreCls(t.score)}">${t.score}%</span>`) : checkCell(c, w)}</td></tr>`); });
+  return rows.length ? `<table><tr><th>Check</th><th>Band</th><th>Result</th></tr>${rows.join("")}</table>${ws.length ? "" : `<p class="hint" style="margin-top:6px">Check dates haven't been set yet.</p>`}` : `<p class="hint">No checks yet.</p>`;
+}
 function kidModal(){
   const k = S.kids.find(x => x.id === S.kid); if(!k) return "";
-  const r = reader(k.id), t = lastTest(k.id), a = ageNow(r), mv = S.moves.filter(m => m.student_id === k.id).slice().reverse(), rd = S.reads.filter(x => x.student_id === k.id).slice().reverse(), pr = progressRate(k.id);
+  const cc = classChild(k), r = reader(k.id), t = lastTest(k.id), a = ageNow(r), mv = S.moves.filter(m => m.student_id === k.id).slice().reverse(), rd = S.reads.filter(x => x.student_id === k.id).slice().reverse(), pr = progressRate(k.id);
   return `<div class="modal" onclick="if(event.target===this){S.kid=null;render()}"><div class="box">
     <div class="row between" style="margin-bottom:14px"><h1>${esc(k.picture)} ${esc(k.first_name)}</h1><div class="row"><button class="btn small" onclick="parentReport('${k.id}')">🖨️ Parent report</button><button class="btn soft small" onclick="S.kid=null;render()">Close</button></div></div>
     ${(() => { const s0 = startOf(k.id), n0 = nowOf(k.id), gr = grewOf(k.id), g = gapNow(k.id); return `<div class="stats"><div class="stat"><small>Starting point${s0 ? " · " + fmtDate(s0.at) : ""}</small><b style="font-size:18px">${s0 ? raTag(s0) : "Not tested"}</b></div><div class="stat"><small>Now</small><b style="font-size:18px">${n0 ? raTag(n0) : "–"}</b></div><div class="stat"><small>Progress since start</small><b>${gr == null ? "–" : (gr > 0 ? "+" : "") + gr + "m"}</b></div><div class="stat"><small>Actual age</small><b>${fmtAge(a)}</b></div><div class="stat"><small>Gap now</small><b>${g == null ? "–" : (g >= 0 ? "+" : "") + g + "m"}</b></div></div>`; })()}
     <div class="grid2"><div class="card"><div class="lbl">Reading age and band over time</div>${svgReading(k.id)}</div>
-      <div class="card"><div class="lbl">Skills in the latest test</div>${t ? `<div class="bars">${Object.entries(t.skills || {}).map(([s, v]) => `<div class="b"><span>${SKILL_NAMES[s] || s}</span><div class="t"><i style="width:${v}%"></i></div><span>${v}%</span></div>`).join("")}</div><p class="hint">Test on ${fmtDate(t.created_at)} · ${t.score}% correct overall</p>` : `<p class="hint">No test yet.</p>`}</div></div>
+      <div class="card"><div class="lbl">Reading skills</div>${skillBars(cc.an.profile)}<p class="hint" style="margin-top:6px">From the reading test, band checks and the questions in their texts.</p></div></div>
+    <div class="grid2"><div class="card"><div class="lbl">⭐ Strengths and 🎯 next steps</div>${insightHTML(cc)}</div>
+      <div class="card" style="overflow-x:auto"><div class="lbl">📅 Checks this year</div>${checksTable(cc)}</div></div>
     <div class="grid2"><div class="card"><div class="lbl">Settings</div>
         <label>Move to a band</label><div class="row"><select id="mb" style="flex:1">${BANDS.slice(1).map(b => `<option value="${b[0]}" ${b[0] === r.band ? "selected" : ""}>${b[0]}. ${b[1]} (${b[3]})</option>`).join("")}</select><button class="btn small" onclick="setBand('${k.id}', +$('#mb').value, $('#mn').value || 'teacher choice')">Move</button></div>
         <input id="mn" placeholder="Reason (optional)" style="margin-top:6px">

@@ -2013,3 +2013,95 @@ const EARLY_TEXTS = [
   ET("ye4-seeds", 4, "Grow a Bean", "Instructions", ["You need: a jar, a paper towel and a bean.", "1. Put the paper towel in the jar.", "2. Push the bean down the side of the jar.", "3. Add a little water and keep it wet.", "4. Put the jar by a window and wait.", "In a few days, you will see a root and a shoot!"], { shoot: "the first green part of a new plant" }, [["What do you need?", ["a jar, a paper towel and a bean", "a pot and soil", "a cup and milk"], 0, "retrieval"], ["Where do you put the jar?", ["by a window", "in the fridge", "in a box"], 0, "retrieval"], ["What will you see?", ["a root and a shoot", "a flower", "an apple"], 0, "retrieval"]], ["a jar, a paper towel and a bean", "Add a little water and keep it wet.", "Put the jar by a window and wait.", "a root and a shoot"], yellowP)
 ];
 TEXTS.push(...EARLY_TEXTS);
+
+/* =================== READING CHECKS, TRACKER AND NEXT STEPS (shared by the teacher and children's pages) =================== */
+
+// The six checks in a school year: mid-term = band assessment (unseen text), end of term = full reading-age test
+const CHECKS = [
+  { idx: 1, kind: "band", title: "Term 1 mid-term check", short: "T1 mid" },
+  { idx: 2, kind: "age", title: "Term 1 reading age", short: "T1 end" },
+  { idx: 3, kind: "band", title: "Term 2 mid-term check", short: "T2 mid" },
+  { idx: 4, kind: "age", title: "Term 2 reading age", short: "T2 end" },
+  { idx: 5, kind: "band", title: "Term 3 mid-term check", short: "T3 mid" },
+  { idx: 6, kind: "age", title: "Term 3 reading age", short: "T3 end" }
+];
+// Assessment texts: ASSESS[band] = 6 unseen texts. Check n uses text n-1, so a child never meets the same text twice in a year.
+const ASSESS = {};
+
+const SKILL_ORDER = ["early", "vocabulary", "retrieval", "sequencing", "inference", "prediction", "summarising", "structure", "language", "sentences", "grammar"];
+SKILL_NAMES.grammar = "Grammar";
+
+// Next steps for each reading skill, written for teachers, children and parents.
+const NEXT_STEPS = {
+  early: { teacher: "Keep daily phonics (RWI) going; practise blending with sound buttons, and reread decodable books until they are fluent.",
+    child: "Practise your sounds every day, then blend them to read the words.", parent: "Practise the sounds from school, and read the decodable book together every night." },
+  vocabulary: { teacher: "Pre-teach 3 or 4 key words before reading, explore word meanings in context, and keep a class word wall.",
+    child: "When you meet a new word, read the sentence around it and work out what it might mean.", parent: "Talk about new words you meet together and try to use them in conversation." },
+  retrieval: { teacher: "Model skimming and scanning for key words; ask children to point to or highlight the evidence for each answer.",
+    child: "Look back in the text to find the answer. Find the key word from the question in the text.", parent: "Ask who, what, where and when questions, and let them look back in the book to find the answer." },
+  sequencing: { teacher: "Use story maps and sequencing cards; retell texts in order with time words (first, next, after that, finally).",
+    child: "After reading, retell what happened in order: first, next, then, finally.", parent: "After reading, ask your child to retell the story in order." },
+  inference: { teacher: "Model 'reading between the lines' with think-alouds; keep asking 'How do you know?' and link clues to feelings and motives.",
+    child: "Look for clues about how the characters feel. Ask yourself: what does the writer want me to work out?", parent: "Ask 'How do you think they feel? How do you know?' while you read together." },
+  prediction: { teacher: "Pause at key moments to predict, using evidence from the text, then check predictions as you read on.",
+    child: "Stop and guess what will happen next, using clues from the text. Then read on to check.", parent: "Stop at an exciting part and ask 'What do you think will happen next? Why?'" },
+  summarising: { teacher: "Teach children to find the main idea of each paragraph and sum it up in one sentence.",
+    child: "After each part, say in one sentence what it was mostly about.", parent: "Ask 'What was that page mostly about?' and help them say it in one sentence." },
+  structure: { teacher: "Explore how texts are organised (headings, paragraphs, openings and endings) and compare different text types.",
+    child: "Notice how the text is set out: the title, headings, paragraphs, and how it starts and ends.", parent: "Read different kinds of texts together, such as recipes, letters and news, and talk about how they look." },
+  language: { teacher: "Explore the writer's word choices and figurative language; ask 'Why did the writer choose this word? What effect does it have?'",
+    child: "Notice interesting words and phrases. Ask yourself: why did the writer choose this word?", parent: "Pick a favourite sentence together and talk about why it works so well." },
+  sentences: { teacher: "Build vocabulary and sentence understanding through daily reading aloud, cloze activities and talk about word meanings.",
+    child: "Read the whole sentence carefully before you choose a word. Check that it makes sense.", parent: "Read aloud to your child every day, including books a little harder than they read alone." },
+  grammar: { teacher: "Revisit the grammar focus for this band little and often, and ask children to spot it in their reading texts.",
+    child: "Practise your grammar focus. Look out for it in every text you read.", parent: "Ask your child to show you their grammar focus in a book you are reading together." }
+};
+
+// Combine every source of evidence into a score for each skill.
+// data = { tests: [{kind, skills, at}], reads: [{answers, comp, grammar, seconds, text_id, at}] }
+function skillProfile(data){
+  const acc = {}, add = (k, ok, n) => { const a = acc[k] = acc[k] || { ok: 0, n: 0 }; a.ok += ok; a.n += n; };
+  (data.tests || []).forEach((t, i, all) => {
+    const w = t.kind === "assess" ? 3 : t.kind === "test" ? (i === all.map(x => x.kind).lastIndexOf("test") ? 2 : 0) : 0;
+    if(!w) return; Object.entries(t.skills || {}).forEach(([k, v]) => v != null && add(k, w * v / 100, w));
+  });
+  (data.reads || []).slice(-15).forEach(r => {
+    const ans = r.answers || [];
+    if(ans.length){ ans.forEach(a => { if(a.part === "q" && a.skill) add(a.skill, a.ok ? 1 : 0, 1); if(a.part === "g") add("grammar", a.ok ? 1 : 0, 1); }); }
+    else if(r.grammar != null) add("grammar", r.grammar / 100 * 2, 2);
+  });
+  const out = {}; Object.entries(acc).forEach(([k, a]) => { if(a.n >= 3) out[k] = Math.round(a.ok / a.n * 100); });
+  return out;
+}
+
+// Strengths, gaps and next steps for one child.
+// info = { first_name, band, grade, ageMonths, journey: [...], tests, reads }
+function analyseChild(info){
+  const prof = skillProfile(info), entries = Object.entries(prof).sort((a, b) => SKILL_ORDER.indexOf(a[0]) - SKILL_ORDER.indexOf(b[0]));
+  const gaps = entries.filter(([k, v]) => v < 60).sort((a, b) => a[1] - b[1]).map(([k, v]) => ({ skill: k, pct: v }));
+  const developing = entries.filter(([k, v]) => v >= 60 && v < 80).sort((a, b) => a[1] - b[1]).map(([k, v]) => ({ skill: k, pct: v }));
+  const strengths = entries.filter(([k, v]) => v >= 80).sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ skill: k, pct: v }));
+  const flags = [], b = info.band || 0, exp = expectedBand(info.grade), j = info.journey || [], reads = info.reads || [];
+  const focus = b ? BANDS[b][6] : "";
+  if(b && exp && b <= exp - 2) flags.push({ key: "behind", level: "high", teacher: `Reading ${exp - b} bands below the expected band for ${info.grade} (${bandName(exp)}). Plan extra guided or 1:1 reading several times a week.`, parent: "Extra reading at home every day will make a real difference right now.", child: "" });
+  else if(b && exp && b === exp - 1) flags.push({ key: "below", level: "mid", teacher: `One band below the expected band (${bandName(exp)}). Keep a close eye at the next check.`, parent: "", child: "" });
+  else if(b && exp && b > exp) flags.push({ key: "above", level: "good", teacher: `Reading above the expected band for ${info.grade}. Offer challenge: wider reading and deeper discussion of the writer's choices.`, parent: "Your child is reading above the expected level. Keep offering new and challenging books.", child: "" });
+  if(j.length >= 2){ const months = (new Date(j[j.length - 1].at) - new Date(j[0].at)) / (30.44 * 864e5);
+    if(months >= 3){ const rate = (j[j.length - 1].ra - j[0].ra) / months;
+      if(rate < .75) flags.push({ key: "slow", level: "high", teacher: `Reading age has grown ${j[j.length - 1].ra - j[0].ra} months in ${Math.round(months)} months since the baseline, slower than expected. Review texts and support.`, parent: "", child: "" });
+      else if(rate >= 1.5) flags.push({ key: "fast", level: "good", teacher: `Accelerated progress: ${j[j.length - 1].ra - j[0].ra} months of reading age in ${Math.round(months)} months.`, parent: `Great progress: ${info.first_name}'s reading age has grown ${j[j.length - 1].ra - j[0].ra} months.`, child: "" }); } }
+  const month = Date.now() - 28 * 864e5, recent = reads.filter(r => new Date(r.at || r.created_at) > month);
+  if(b && recent.length < 4) flags.push({ key: "few", level: "mid", teacher: `Only ${recent.length} Nestory ${recent.length === 1 ? "text" : "texts"} read in the last 4 weeks. Build in regular reading time.`, parent: "Try to read with your child for 10 minutes every day.", child: "Read a book from your bookshelf at least twice a week." });
+  const withSpeed = reads.slice(-8).map(r => { const t = (typeof TEXTS !== "undefined" ? TEXTS : []).find(x => x.id === r.text_id); return t && r.seconds ? { wpm: t.text.join(" ").split(/\s+/).length / (r.seconds / 60), comp: r.comp } : null; }).filter(Boolean);
+  if(withSpeed.length >= 3){ const fast = withSpeed.filter(x => x.wpm > (b <= 10 ? 160 : 260) && x.comp < 60).length; if(fast >= 2) flags.push({ key: "rushing", level: "mid", teacher: "Some texts are being read very quickly with low understanding. Encourage slowing down and rereading before answering.", parent: "", child: "Take your time. Read slowly, and look back at the text before you answer." }); }
+  const nextSkills = (gaps.length ? gaps : developing).slice(0, 2);
+  const next = nextSkills.map(g => ({ skill: g.skill, pct: g.pct, teacher: NEXT_STEPS[g.skill].teacher + (g.skill === "grammar" && focus ? ` Focus: ${focus}.` : ""),
+    child: NEXT_STEPS[g.skill].child + (g.skill === "grammar" && focus ? ` (${focus})` : ""), parent: NEXT_STEPS[g.skill].parent }));
+  return { profile: prof, gaps, developing, strengths, flags, next, enough: entries.length > 0 };
+}
+
+// Group a class by their main gap, so teachers can plan small-group teaching.
+function gapGroups(list){ // list = [{name, analysis}]
+  const g = {}; list.forEach(x => (x.analysis.gaps.length ? x.analysis.gaps : x.analysis.developing).slice(0, 2).forEach(s => (g[s.skill] = g[s.skill] || []).push(x.name)));
+  return Object.entries(g).sort((a, b) => b[1].length - a[1].length);
+}

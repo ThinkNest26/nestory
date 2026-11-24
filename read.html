@@ -96,7 +96,7 @@ const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { st
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const shuffle = a => a.map(x => [Math.random(), x]).sort((p, q) => p[0] - q[0]).map(x => x[1]);
-let me = null, ns = null, reads = [], testsTaken = 0, screen = "load", roster = null, classCode = "", chosen = null;
+let me = null, ns = null, reads = [], testsTaken = 0, myWin = null, myTests = [], screen = "load", roster = null, classCode = "", chosen = null;
 let prefs = JSON.parse(localStorage.getItem("ns_prefs") || '{"size":21,"easy":false}');
 
 function toast(t){ const el = $("#toast"); el.textContent = t; el.classList.add("show"); setTimeout(() => el.classList.remove("show"), 2000); }
@@ -143,9 +143,9 @@ async function tryPicture(pic, el){
   $(".msg").textContent = data.reason === "locked" ? "Too many tries. Ask your teacher, or wait 10 minutes." : "Not that one. Try again!";
 }
 async function loadMe(){
-  const [a, b, c] = await Promise.all([db.rpc("ns_me"), db.from("ns_reads").select("text_id, band, score, created_at").eq("student_id", me.student_id).order("created_at"),
-    db.from("ns_tests").select("id").eq("student_id", me.student_id).eq("kind", "test")]);
-  ns = a.data || { band: 0, retest: true }; reads = b.data || []; testsTaken = (c.data || []).length;
+  const [a, b, c, w] = await Promise.all([db.rpc("ns_me"), db.from("ns_reads").select("text_id, band, score, comp, grammar, seconds, answers, created_at").eq("student_id", me.student_id).order("created_at"),
+    db.from("ns_tests").select("kind, band, reading_age, skills, created_at").eq("student_id", me.student_id).order("created_at"), db.rpc("ns_my_window")]);
+  ns = a.data || { band: 0, retest: true }; reads = b.data || []; myTests = c.data || []; testsTaken = myTests.filter(t => t.kind === "test").length; myWin = w && !w.error ? w.data || null : null;
 }
 async function bye(){ if(!confirm("Leave Nestory?")) return; await db.rpc("student_logout"); me = null; ns = null; go("code"); }
 
@@ -158,7 +158,7 @@ const SCREENS = {
     <button class="btn" id="go" style="margin-top:14px" onclick="classCode=$('#cc').value.trim();if(classCode)loadRoster()">Let's go ➜</button><p class="msg"></p></div></div>`,
   names: () => head("Who are you?", esc(roster.class_name), "code") + `<div class="body"><div class="card"><div class="names">${roster.students.map(s => `<button onclick='chosen=${JSON.stringify(s)};go("pic")'>${esc(s.first_name)}</button>`).join("")}</div></div></div>`,
   pic: () => head(`Hi ${esc(chosen.first_name)}!`, "Tap your secret picture", "names") + `<div class="body"><div class="card"><div class="pics">${PICTURES.map(p => `<button onclick="tryPicture('${p}', this)">${p}</button>`).join("")}</div><p class="msg"></p></div></div>`,
-  home: homeView, intro: introView, early: earlyView, test: testView, read: readView, check: checkView, result: resultView
+  home: homeView, intro: introView, assess: assessView, early: earlyView, test: testView, read: readView, check: checkView, result: resultView
 };
 function draw(){ $("#app").innerHTML = (SCREENS[screen] || SCREENS.home)(); }
 
@@ -166,9 +166,11 @@ function bandPath(b){ return `<div class="path" aria-label="My reading journey">
 function homeView(){
   const b = ns.band, needTest = ns.retest || !b, here = TEXTS.filter(t => t.band === b), doneIds = reads.filter(r => r.band === b).map(r => r.text_id);
   return `<div class="head"><img src="bird.png" alt=""><div><div class="hi">Hello,</div><h1>${esc(me.first_name)}'s reading nest</h1></div><button class="back" onclick="bye()">👋 Bye</button></div><div class="body">
-    ${needTest ? `<div class="card center"><div style="font-size:54px">🗺️</div><h2 class="big">${b ? "Time for a new reading quest!" : "Your reading quest"}</h2><p class="sub">Read some sentences and short stories. Nestory will find the books that are just right for you. Take your time; there's no rush.</p><button class="btn green" onclick="EX={a:null,b:null};go('intro');speak(INTRO_SAY)">Start my reading quest ➜</button></div>` : ""}
+    ${myWin && myWin.kind === "band" && b ? `<div class="card center" style="background:#FFF4DE"><div style="font-size:54px">📝</div><h2 class="big">It's reading check time!</h2><p class="sub">${esc(myWin.title || "Your reading check")} is open. Read a new text and answer the questions.</p><button class="btn green" onclick="startAssess()">Start my reading check ➜</button></div>` : ""}
+    ${(needTest || ageWin()) ? `<div class="card center"><div style="font-size:54px">🗺️</div><h2 class="big">${ageWin() ? esc(ageWin().title || "Reading quest time!") : b ? "Time for a new reading quest!" : "Your reading quest"}</h2><p class="sub">Read some sentences and short stories. Nestory will find the books that are just right for you. Take your time; there's no rush.</p><button class="btn green" onclick="EX={a:null,b:null};go('intro');speak(INTRO_SAY)">Start my reading quest ➜</button></div>` : ""}
     ${b ? `<div class="card"><div class="bandcard"><div class="dot" style="background:${bandColour(b)}"></div><div><small>I'm ${aBand(b)}</small><b>${bandName(b)} reader</b><small>${reads.length} ${reads.length === 1 ? "book" : "books"} read</small></div></div>${bandPath(b)}</div>` : ""}
     ${b === 20 && !needTest ? `<div class="card center" style="background:#F3F6FA"><div style="font-size:40px">💎</div><h2 class="big">You've reached the top band!</h2><p class="sub">Diamond is the highest band in Nestory. Every book here is a challenge worth taking.</p></div>` : ""}
+    ${b && !needTest ? nextStepCard() : ""}
     ${b && ns.ready_check ? `<div class="card center" style="background:var(--green)"><div style="font-size:44px">🌟</div><h2 class="big">You're ready for a band check!</h2><p class="sub" style="color:var(--gink)">Answer some questions from ${bandName(b + 1)} band. If you do well, you'll move up!</p><button class="btn green" onclick="startCheck()">Start my band check</button></div>` : ""}
     ${b && !needTest ? `<div class="card"><h2 style="margin-bottom:12px">📚 My bookshelf</h2>${here.length ? `<div class="shelf">${here.map(t => `<button class="book" style="background:${bandColour(b)}" onclick="openText('${t.id}')">${doneIds.includes(t.id) ? `<span class="tick">✓ read</span>` : ""}<small>${esc(t.type)}</small><b>${esc(t.title)}</b><small>Tap to read</small></button>`).join("")}</div>` : `<p class="sub">New ${bandName(b)} books are being written for you. Ask your teacher what to read today!</p>`}</div>` : ""}
   </div>`;
@@ -203,6 +205,70 @@ function introView(){
     <button class="btn green" onclick="startTest()">I'm ready: start the real quest ➜</button></div>`;
 }
 
+/* ---------- reading checks (set by the school): mid-term band assessment, end-of-term reading-age test ---------- */
+const ageWin = () => myWin && myWin.kind === "age" ? myWin : null;
+const KID_SKILL = { early: "reading words and sounds", vocabulary: "working out word meanings", retrieval: "finding answers in the text", sequencing: "putting events in order",
+  inference: "working out clues", prediction: "guessing what happens next", summarising: "saying what a text is mostly about", structure: "noticing how a text is set out",
+  language: "noticing the writer's words", sentences: "reading sentences carefully", grammar: "grammar" };
+async function saveResult(band, ra, score, skills, answers, form, win){
+  if(win) return db.rpc("ns_save_window", { p_window: win.id, p_band: band, p_reading_age: ra, p_score: score, p_skills: skills, p_answers: answers, p_form: form });
+  return db.rpc("ns_save_test", { p_band: band, p_reading_age: ra, p_score: score, p_skills: skills, p_answers: answers, p_form: form });
+}
+let A = null;
+function assessText(band, idx){
+  const bank = ASSESS[band] || [], item = bank[(idx - 1) % Math.max(1, bank.length)];
+  if(item) return item;
+  const done = reads.map(r => r.text_id), t = TEXTS.filter(x => x.band === band).find(x => !done.includes(x.id)) || TEXTS.find(x => x.band === band);
+  return t ? { id: t.id, title: t.title, type: t.type, text: t.text, questions: t.questions, grammar: t.grammar.practice } : null;
+}
+function startAssess(){
+  const item = assessText(ns.band, myWin.idx); if(!item){ toast("Ask your teacher about your reading check."); return; }
+  A = { win: myWin, item, step: "intro", qi: 0, gi: 0, answers: [], order: null, start: Date.now() }; go("assess");
+}
+function assessView(){
+  const t = A.item, early = ns.band <= 4, fs = early ? Math.max(prefs.size, 28) : prefs.size;
+  const tools = `<div class="tools">${early ? `<button onclick="speak(A.item.title + '. ' + A.item.text.join(' '))">🔊 Read to me</button><button onclick="speechSynthesis.cancel()">⏹ Stop</button>` : ""}<button onclick="setPref('size',Math.max(16,prefs.size-2))">A−</button><button onclick="setPref('size',Math.min(32,prefs.size+2))">A+</button><button class="${prefs.easy ? "on" : ""}" onclick="setPref('easy',!prefs.easy)">Easy-read font</button></div>`;
+  const textHTML = sz => `<div class="reader ${prefs.easy || early ? "easy" : ""}" style="font-size:${sz}px">${t.text.map(p => ns.band === 1 ? `<div class="pagepic">${esc(p)}</div>` : `<p>${esc(p)}</p>`).join("")}</div>`;
+  if(A.step === "intro") return head(esc(A.win.title || "Reading check"), "Reading check", "home") + `<div class="body"><div class="card center"><div style="font-size:56px">📝</div><h2 class="big">It's reading check time!</h2>
+      <p class="sub">You will read a new ${esc((t.type || "text").toLowerCase())} and answer some questions. You won't see if you're right: just do your best. It helps your teacher know what to teach you next.</p>
+      ${early ? `<div class="adult" style="text-align:left"><b>For the adult:</b> please sit with the child, read the questions to them if needed, but don't help with the answers.</div>` : ""}
+      <button class="btn green" onclick="A.step='read';go('assess')">Start my check ➜</button></div></div>`;
+  if(A.step === "read") return head(esc(t.title), "Reading check: read carefully", "") + `<div class="body"><div class="card">${tools}${textHTML(fs)}<button class="btn green" onclick="A.step='q';go('assess')">I've finished reading ➜</button></div></div>`;
+  const list = A.step === "q" ? t.questions : (t.grammar || []), i = A.step === "q" ? A.qi : A.gi, q = list[i];
+  if(!A.order) A.order = shuffle(q[1].map((o, k) => k));
+  return head(esc(t.title), A.step === "q" ? `Question ${i + 1} of ${list.length}` : `Grammar ${i + 1} of ${list.length}`, "") + `<div class="body"><div class="prog"><i style="width:${(A.qi + A.gi) / (t.questions.length + (t.grammar || []).length) * 100}%"></i></div>
+    <div class="card q"><div class="row"><div class="lbl">${A.step === "q" ? "Think about the text" : "Grammar"}</div><button class="speak" onclick="speak(${esc(JSON.stringify(q[0]))})">🔊</button></div><h2>${esc(q[0])}</h2>
+      <div class="opts">${A.order.map((k, n) => `<button onclick="pickA(${n})">${esc(q[1][k])}${early ? `<span class="say" onclick="event.stopPropagation();speak(${esc(JSON.stringify(String(q[1][k]).replace(/[^\w\s'.,!?-]/g, "").trim()))})">🔊</span>` : ""}</button>`).join("")}</div></div>
+    ${A.step === "q" ? `<details class="card"><summary style="font-weight:900;color:var(--navy);cursor:pointer">📖 Look at the text again</summary><div style="margin-top:10px">${textHTML(Math.max(17, fs - 3))}</div></details>` : ""}</div>`;
+}
+async function pickA(n){
+  const t = A.item;
+  if(A.step === "q"){ const q = t.questions[A.qi]; A.answers.push({ part: "q", i: A.qi, ok: A.order[n] === q[2], skill: q[3] }); A.qi++; A.order = null;
+    if(A.qi < t.questions.length) return go("assess"); A.step = (t.grammar || []).length ? "g" : "done"; if(A.step === "g") return go("assess"); }
+  else { const g = t.grammar[A.gi]; A.answers.push({ part: "g", i: A.gi, ok: A.order[n] === g[2] }); A.gi++; A.order = null; if(A.gi < t.grammar.length) return go("assess"); }
+  const sk = {}; A.answers.forEach(a => { const k = a.part === "g" ? "grammar" : a.skill; (sk[k] = sk[k] || [0, 0])[1]++; if(a.ok) sk[k][0]++; });
+  const skills = Object.fromEntries(Object.entries(sk).map(([k, v]) => [k, Math.round(v[0] / v[1] * 100)]));
+  const score = Math.round(A.answers.filter(a => a.ok).length / A.answers.length * 100);
+  go("load");
+  const { data, error } = await saveResult(ns.band, null, score, skills, A.answers, t.id, A.win);
+  if(error || !data || !data.ok){ toast("I couldn't save that. Ask your teacher."); return go("home"); }
+  await loadMe(); R = { kind: "assess" }; go("result");
+}
+function nextStepCard(){
+  const an = myAnalysis(); if(!an || !an.enough) return "";
+  const good = an.strengths[0], step = an.next[0], extra = an.flags.find(f => f.child);
+  if(!good && !step && !extra) return "";
+  return `<div class="card"><h2 style="margin-bottom:10px">👣 My next step</h2>
+    ${good ? `<p style="font-weight:800;margin-bottom:8px">⭐ I'm good at ${esc(KID_SKILL[good.skill] || good.skill)}.</p>` : ""}
+    ${step ? `<p style="font-weight:800;margin-bottom:8px">🎯 I'm working on ${esc(KID_SKILL[step.skill] || step.skill)}.</p><p class="sub" style="text-align:left;margin:0">${esc(step.child)}</p>` : ""}
+    ${extra ? `<p class="sub" style="text-align:left;margin:8px 0 0">${esc(extra.child)}</p>` : ""}</div>`;
+}
+function myAnalysis(){
+  if(!ns || !ns.band) return null;
+  return analyseChild({ first_name: me.first_name, band: ns.band, grade: me.grade, tests: myTests.map(t => ({ kind: t.kind, skills: t.skills, at: t.created_at })),
+    reads: reads.map(r => Object.assign({ at: r.created_at }, r)), journey: [] });
+}
+
 /* ---------- reading test (adaptive) ---------- */
 let T = null;
 function startTest(){
@@ -217,7 +283,7 @@ function startMain(b, pre){
 
 /* ---------- early test and early band checks (bands 1–4): an adult listens and taps ✓ or ✗ ---------- */
 let E = null;
-function startEarly(b, fromMain){ E = { b, passed: [], failed: [], answers: [], fromMain, check: false, phase: "adult" }; earlyBand(b); go("early"); }
+function startEarly(b, fromMain){ E = { b, passed: [], failed: [], answers: [], fromMain, check: false, phase: "adult", win: ageWin() }; earlyBand(b); go("early"); }
 function earlyBand(b){ E.b = b; E.items = shuffle(EARLY[b].items).slice(0, 6); E.i = 0; E.yes = 0; }
 function earlyView(){
   const X = EARLY[E.b], title = E.check ? "Band check" : "Reading quest";
@@ -251,7 +317,7 @@ async function finishEarly(){
   const skills = { early: Math.round(E.answers.filter(a => a.ok).length / E.answers.length * 100) };
   if(E.fromMain && T && T.skills.sentences) skills.sentences = Math.round(T.skills.sentences[0] / T.skills.sentences[1] * 100);
   go("load");
-  const { data, error } = await db.rpc("ns_save_test", { p_band: band, p_reading_age: ra, p_score: score, p_skills: skills, p_answers: all, p_form: "E" });
+  const { data, error } = await saveResult(band, ra, score, skills, all, "E", E.win);
   if(error || !data || !data.ok){ toast("I couldn't save that. Ask your teacher."); return go("home"); }
   await loadMe(); R = { kind: "test", band, early: true }; go("result");
 }
@@ -276,6 +342,8 @@ function finishA(){
   const pb = keys.filter(k => k <= target + 1).sort((a, b) => b - a)[0] || keys[0];
   const forms = TEST_B[pb], fi = testsTaken % forms.length;
   T.part = "B"; T.pb = pb; T.B = forms[fi]; T.form = "ABC"[fi] || "A"; T.bi = -1; T.bRight = 0;
+  const aw = ageWin(), unseen = aw && (ASSESS[pb] || [])[aw.idx - 1];
+  if(unseen){ T.B = { title: unseen.title, text: unseen.text, q: unseen.questions.slice(0, 6) }; T.form = unseen.id; }
   go("test");
 }
 function answerA(k){
@@ -305,7 +373,7 @@ async function finishTest(){
   const ra = Math.round(B[4] + (B[5] - B[4]) * frac);
   const right = T.answers.filter(a => a.ok).length, score = Math.round(right / T.answers.length * 100);
   const skills = Object.fromEntries(Object.entries(T.skills).map(([k, v]) => [k, Math.round(v[0] / v[1] * 100)]));
-  const { data, error } = await db.rpc("ns_save_test", { p_band: band, p_reading_age: ra, p_score: score, p_skills: skills, p_answers: T.answers, p_form: T.pre ? "E" + (T.form || "A") : (T.form || "A") });
+  const { data, error } = await saveResult(band, ra, score, skills, T.answers, T.pre ? "E" + (T.form || "A") : (T.form || "A"), ageWin());
   if(error || !data || !data.ok){ toast("I couldn't save that. Ask your teacher."); return go("home"); }
   await loadMe(); R = { kind: "test", band, early: T.bandA < 5 }; go("result");
 }
@@ -409,6 +477,9 @@ async function pickC(i){
 
 /* ---------- results ---------- */
 function resultView(){
+  if(R.kind === "assess") { speak("Check complete. Well done!");
+    return head("Check complete!", "Well done") + `<div class="body"><div class="card center"><div class="confetti">✅</div><h2 class="big">Thank you, ${esc(me.first_name)}!</h2><p class="sub">Your teacher will look at your answers to plan your next steps.</p>
+      <button class="btn green" onclick="go('home')">Back to my bookshelf ➜</button></div>${nextStepCard()}</div>`; }
   if(R.kind === "test") { speak(`Well done! You are ${aBand(R.band)} ${bandName(R.band)} reader.`);
     return head("Quest complete!", "Well done") + `<div class="body"><div class="card center"><div class="confetti">🎉</div><h2 class="big">You're ${aBand(R.band)} ${bandName(R.band)} reader!</h2>
       <div class="bandcard" style="justify-content:center;margin:16px 0"><div class="dot" style="background:${bandColour(R.band)}"></div></div>
