@@ -94,6 +94,7 @@ let prefs = JSON.parse(localStorage.getItem("ns_prefs") || '{"size":21,"easy":fa
 function toast(t){ const el = $("#toast"); el.textContent = t; el.classList.add("show"); setTimeout(() => el.classList.remove("show"), 2000); }
 function speak(text){ try{ speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = "en-GB"; u.rate = .9; u.pitch = 1.05;
   const v = speechSynthesis.getVoices().filter(v => /en-GB/i.test(v.lang)); const pick = v.find(x => /female|Serena|Kate|Martha|Libby|Sonia/i.test(x.name)) || v[0]; if(pick) u.voice = pick; speechSynthesis.speak(u); }catch(e){} }
+const aBand = b => /^[AEIOU]/.test(bandName(b)) ? "an" : "a";
 function go(s){ screen = s; draw(); window.scrollTo(0, 0); }
 const head = (title, hi, back = "home") => `<div class="head"><img src="bird.png" alt=""><div><div class="hi">${hi}</div><h1>${title}</h1></div>${back ? `<button class="back" onclick="go('${back}')">‹ Back</button>` : ""}</div>`;
 
@@ -146,7 +147,7 @@ function homeView(){
   const b = ns.band, needTest = ns.retest || !b, here = TEXTS.filter(t => t.band === b), doneIds = reads.filter(r => r.band === b).map(r => r.text_id);
   return `<div class="head"><img src="bird.png" alt=""><div><div class="hi">Hello,</div><h1>${esc(me.first_name)}'s reading nest</h1></div><button class="back" onclick="bye()">👋 Bye</button></div><div class="body">
     ${needTest ? `<div class="card center"><div style="font-size:54px">🗺️</div><h2 class="big">${b ? "Time for a new reading quest!" : "Your reading quest"}</h2><p class="sub">Read some sentences and short stories. Nestory will find the books that are just right for you. Take your time; there's no rush.</p><button class="btn green" onclick="startTest()">Start my reading quest ➜</button></div>` : ""}
-    ${b ? `<div class="card"><div class="bandcard"><div class="dot" style="background:${bandColour(b)}"></div><div><small>I'm a</small><b>${bandName(b)} reader</b><small>${reads.length} ${reads.length === 1 ? "book" : "books"} read</small></div></div>${bandPath(b)}</div>` : ""}
+    ${b ? `<div class="card"><div class="bandcard"><div class="dot" style="background:${bandColour(b)}"></div><div><small>I'm ${aBand(b)}</small><b>${bandName(b)} reader</b><small>${reads.length} ${reads.length === 1 ? "book" : "books"} read</small></div></div>${bandPath(b)}</div>` : ""}
     ${b && ns.ready_check ? `<div class="card center" style="background:var(--green)"><div style="font-size:44px">🌟</div><h2 class="big">You're ready for a band check!</h2><p class="sub" style="color:var(--gink)">Answer some questions from ${bandName(b + 1)} band. If you do well, you'll move up!</p><button class="btn green" onclick="startCheck()">Start my band check</button></div>` : ""}
     ${b && !needTest ? `<div class="card"><h2 style="margin-bottom:12px">📚 My bookshelf</h2>${here.length ? `<div class="shelf">${here.map(t => `<button class="book" style="background:${bandColour(b)}" onclick="openText('${t.id}')">${doneIds.includes(t.id) ? `<span class="tick">✓ read</span>` : ""}<small>${esc(t.type)}</small><b>${esc(t.title)}</b><small>Tap to read</small></button>`).join("")}</div>` : `<p class="sub">New ${bandName(b)} books are being written for you. Ask your teacher what to read today!</p>`}</div>` : ""}
   </div>`;
@@ -304,8 +305,8 @@ async function pickC(i){
 
 /* ---------- results ---------- */
 function resultView(){
-  if(R.kind === "test") { speak(`Well done! You are a ${bandName(R.band)} reader.`);
-    return head("Quest complete!", "Well done") + `<div class="body"><div class="card center"><div class="confetti">🎉</div><h2 class="big">You're a ${bandName(R.band)} reader!</h2>
+  if(R.kind === "test") { speak(`Well done! You are ${aBand(R.band)} ${bandName(R.band)} reader.`);
+    return head("Quest complete!", "Well done") + `<div class="body"><div class="card center"><div class="confetti">🎉</div><h2 class="big">You're ${aBand(R.band)} ${bandName(R.band)} reader!</h2>
       <div class="bandcard" style="justify-content:center;margin:16px 0"><div class="dot" style="background:${bandColour(R.band)}"></div></div>
       <p class="sub">${R.early ? "Your teacher will help you with some of your first books." : "Your bookshelf is ready with books that are just right for you."}</p>${bandPath(R.band)}
       <button class="btn green" style="margin-top:18px" onclick="go('home')">See my bookshelf ➜</button></div></div>`; }
