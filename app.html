@@ -67,6 +67,22 @@
   .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 18px;border-radius:999px;font-weight:800;opacity:0;transition:.3s;pointer-events:none;z-index:50}.toast.show{opacity:1}
   .modal{position:fixed;inset:0;background:rgba(46,58,79,.4);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;z-index:40;overflow:auto}
   .modal .box{background:#F7F9FB;border-radius:22px;max-width:900px;width:100%;padding:22px}
+  .hero{display:flex;gap:18px;align-items:center;background:linear-gradient(135deg,#E3EDF8,#E2F1E8);border:0}
+  .hero img{width:92px;flex-shrink:0}
+  .how{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .how div{background:var(--sky2);border-radius:14px;padding:14px}
+  .how b{display:block;font-family:"Fredoka";font-size:17px;color:var(--navy);font-weight:600;margin:6px 0 4px}
+  .how .n{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--navy);color:#fff;font-weight:900}
+  .step{display:flex;gap:14px;padding:16px 0;border-top:1px solid #EEF2F7}
+  .step:first-of-type{border-top:0}
+  .step .tick{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:900;flex-shrink:0;background:#F1F3F6;color:var(--muted)}
+  .step.done .tick{background:#C6E4D2;color:#24533D}
+  .step .bd{flex:1;min-width:0}
+  .step h3{font-size:18px;margin-bottom:3px}
+  .track{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .track .arrow{color:var(--muted);font-weight:900}
+  .dots{display:inline-flex;gap:3px;vertical-align:middle}.dots i{width:11px;height:11px;border-radius:50%;box-shadow:0 0 0 1px rgba(0,0,0,.1)}
+  @media (max-width:860px){ .how{grid-template-columns:1fr 1fr} .hero{flex-direction:column;text-align:center} }
   @media (max-width:860px){ .stats{grid-template-columns:1fr 1fr} .grid2{grid-template-columns:1fr} .tabs{margin-left:0} .hide-sm{display:none} }
 </style>
 </head>
@@ -87,7 +103,7 @@ const chip = b => `<span class="chip"><i style="background:${bandColour(b)}"></i
 function toast(t){ const el = $("#toast"); el.textContent = t; el.classList.add("show"); setTimeout(() => el.classList.remove("show"), 2200); }
 const errMsg = e => (e && e.message) || "Something went wrong. Please try again.";
 
-const S = { user: null, mode: "signin", tab: "class", classes: null, cls: null, kids: [], readers: [], tests: [], reads: [], moves: [], kid: null, error: "" };
+const S = { user: null, mode: "signin", tab: "start", school: null, schoolRole: "", schoolLoaded: false, classes: null, cls: null, kids: [], readers: [], tests: [], reads: [], moves: [], kid: null, error: "" };
 
 /* ---------- sign in (same account as WonderNest) ---------- */
 async function init(){
@@ -117,16 +133,40 @@ async function newPass(){
 async function signOut(){ await db.auth.signOut(); S.user = null; S.classes = null; render(); }
 
 /* ---------- data ---------- */
+async function loadSchool(){
+  try{
+    const m = await db.from("school_members").select("school_id, role").eq("user_id", S.user.id);
+    const mine = (m.data || [])[0];
+    if(mine){ const sc = await db.from("schools").select("id, name, code").eq("id", mine.school_id).single(); S.school = sc.data || null; S.schoolRole = mine.role; }
+    else { S.school = null; S.schoolRole = ""; }
+  }catch(e){ S.school = null; }
+  S.schoolLoaded = true;
+}
+async function joinSchool(){
+  const code = $("#sc").value.trim(); if(code.length < 6){ S.error = "Please type the 8-character school code."; return render(); }
+  const { data, error } = await db.rpc("join_school", { p_code: code });
+  if(error){ S.error = errMsg(error); return render(); }
+  if(!data.ok){ S.error = data.reason === "member" ? "You already belong to a school." : "We couldn't find that school code. Please check it with your coordinator."; return render(); }
+  S.error = ""; toast("Welcome to " + data.name + " ✓"); await loadSchool(); render();
+}
+async function createSchool(){
+  const name = $("#sn").value.trim(); if(name.length < 2){ S.error = "Please type your school's name."; return render(); }
+  if(!confirm(`Create a new school called "${name}"? Only do this if nobody at your school has set it up yet. You will be the school admin.`)) return;
+  const { data, error } = await db.rpc("create_school", { p_name: name, p_settings: { school: name } });
+  if(error || !data || !data.ok){ S.error = errMsg(error); return render(); }
+  S.error = ""; toast("Your school is ready ✓"); await loadSchool(); render();
+}
 async function loadClasses(){
+  await loadSchool();
   const { data, error } = await db.from("classes").select("id, name, grade, code").order("created_at");
   if(error){ S.error = errMsg(error); }
   S.classes = data || [];
   const keep = localStorage.getItem("ns_class");
   const c = S.classes.find(x => x.id === keep) || S.classes[0];
-  if(c) return openClass(c.id);
-  S.tab = "children"; render();
+  if(c) return openClass(c.id, true);
+  S.tab = "start"; render();
 }
-async function openClass(id){
+async function openClass(id, first){
   S.cls = S.classes.find(c => c.id === id); localStorage.setItem("ns_class", id); S.kid = null;
   const [k, r, t, rd, m] = await Promise.all([
     db.from("students").select("id, first_name, picture").eq("class_id", id).order("first_name"),
@@ -135,6 +175,7 @@ async function openClass(id){
     db.from("ns_reads").select("id, student_id, band, text_id, comp, grammar, score, seconds, created_at").eq("class_id", id).order("created_at"),
     db.from("ns_moves").select("*").eq("class_id", id).order("created_at")]);
   S.kids = k.data || []; S.readers = r.data || []; S.tests = t.data || []; S.reads = rd.data || []; S.moves = m.data || [];
+  if(first) S.tab = S.kids.length && S.kids.every(k => testsOf(k.id).length) ? "class" : "start";
   render();
 }
 const reader = id => S.readers.find(r => r.student_id === id) || { band: 0, retest: true, rwi_group: "", birth_month: null, pending: null };
@@ -144,6 +185,24 @@ const ageAt = (r, when) => { if(!r.birth_month) return null; const b = new Date(
 const ageNow = r => ageAt(r);
 const ageAtTest = (r, t) => t.actual_age != null ? t.actual_age : ageAt(r, t.created_at);
 const gapOf = (r, t) => { const a = t ? ageAtTest(r, t) : null; return a == null ? null : t.reading_age - a; };
+/* Reading journey: the first test is the starting point; every later test or band move updates the reading age and colour. */
+function journey(id){
+  const r = reader(id), ev = [];
+  S.tests.filter(t => t.student_id === id && t.kind === "test").forEach(t => ev.push({ at: t.created_at, band: t.band, ra: t.reading_age, how: "Reading test" }));
+  S.moves.filter(m => m.student_id === id && m.reason !== "test" && m.from_band !== m.to_band && m.to_band).forEach(m => ev.push({ at: m.created_at, band: m.to_band, move: m, how: ({ check: "Band check", teacher: "Teacher", texts: "Texts" })[m.reason] || m.reason }));
+  ev.sort((a, b) => a.at < b.at ? -1 : 1);
+  let ra = null; const out = [];
+  ev.forEach(e => {
+    if(e.ra == null){ const B = BANDS[e.band]; if(!B) return; if(ra == null) ra = B[4]; e.ra = e.band > (out.length ? out[out.length - 1].band : 0) ? Math.max(ra, B[4]) : Math.min(ra, B[5] - 1); }
+    ra = e.ra; e.aa = ageAt(r, e.at); out.push(e);
+  });
+  return out;
+}
+const startOf = id => journey(id)[0] || null;
+const nowOf = id => journey(id).slice(-1)[0] || null;
+const grewOf = id => { const j = journey(id); return j.length ? j[j.length - 1].ra - j[0].ra : null; };
+const gapNow = id => { const n = nowOf(id), a = ageNow(reader(id)); return n && a != null ? n.ra - a : null; };
+const raTag = e => e ? `${chip(e.band)} <b>${fmtAge(e.ra)}</b>` : `<span class="hint">–</span>`;
 function sinceMove(id){ const mv = S.moves.filter(m => m.student_id === id).slice(-1)[0]; return mv ? mv.created_at : ""; }
 function readsInBand(id){ const r = reader(id), since = sinceMove(id); return S.reads.filter(x => x.student_id === id && x.band === r.band && x.created_at > since); }
 function avgLast(id, n){ const rs = readsInBand(id).slice(-n); return rs.length ? Math.round(rs.reduce((a, x) => a + x.score, 0) / rs.length) : null; }
@@ -175,7 +234,7 @@ async function addClass(){
   const name = $("#cn").value.trim(), grade = $("#cg").value; if(!name) return;
   const { data, error } = await db.from("classes").insert({ name, grade }).select("id, name, grade, code").single();
   if(error){ S.error = errMsg(error); return render(); }
-  toast("Class created ✓"); S.classes.push(data); S.tab = "children"; openClass(data.id);
+  toast("Class created ✓"); S.classes.push(data); if(S.tab !== "start") S.tab = "children"; openClass(data.id);
 }
 async function addKids(){
   const names = $("#nk").value.split(/\n|,/).map(n => n.trim()).filter(Boolean).slice(0, 60); if(!names.length) return;
@@ -184,10 +243,18 @@ async function addKids(){
   const { error } = await db.from("students").insert(rows); if(error){ S.error = errMsg(error); return render(); }
   toast(`${rows.length} added ✓`); openClass(S.cls.id);
 }
+function printCards(){
+  const url = location.origin + location.pathname.replace(/app\.html$/, "") + "read.html";
+  const w = window.open("", "_blank"); if(!w) return toast("Please allow pop-ups to print the cards");
+  w.document.write(`<!DOCTYPE html><html><head><title>Nestory code cards · ${esc(S.cls.name)}</title><style>body{font-family:Arial,sans-serif;margin:16px;color:#2E3A4F}.g{display:grid;grid-template-columns:1fr 1fr;gap:12px}.c{border:2px dashed #9FB3CC;border-radius:14px;padding:14px;break-inside:avoid}.c b{font-size:22px}.p{font-size:40px;float:right}.k{font-size:26px;letter-spacing:4px;font-weight:bold;color:#44546F;background:#E3EDF8;border-radius:8px;padding:4px 10px;display:inline-block;margin:6px 0}small{color:#6B7689}@media print{button{display:none}}</style></head><body>
+    <button onclick="print()" style="padding:10px 18px;font-size:16px;margin-bottom:12px">🖨️ Print</button><div class="g">${S.kids.map(k => `<div class="c"><span class="p">${esc(k.picture)}</span><b>${esc(k.first_name)}</b><br><small>Nestory · ${esc(S.cls.name)}</small><br><small>1. Go to</small> <b style="font-size:14px">${esc(url.replace(/^https?:\/\//, ""))}</b><br><small>2. Type the class code</small><br><span class="k">${esc(S.cls.code)}</span><br><small>3. Tap your name, then your secret picture</small></div>`).join("")}</div></body></html>`);
+  w.document.close();
+}
 function exportCSV(){
-  const head = ["Child", "Band", "Band name", "Estimated reading age (months)", "Actual age (months)", "Gap (months)", "Last test", "Texts read", "Average last 5 (%)", "Progress rate", "RWI group", "Status"];
+  const head = ["Child", "Starting band", "Starting reading age", "Start date", "Band now", "Band name", "Reading age now", "Progress (months)", "Estimated reading age at last test (months)", "Actual age (months)", "Gap (months)", "Last test", "Texts read", "Average last 5 (%)", "Progress rate", "RWI group", "Status"];
   const rows = S.kids.map(k => { const r = reader(k.id), t = lastTest(k.id), a = ageNow(r);
-    return [k.first_name, r.band || "", bandName(r.band), t ? t.reading_age : "", a ?? "", gapOf(r, t) ?? "", t ? fmtDate(t.created_at) : "", S.reads.filter(x => x.student_id === k.id).length, avgLast(k.id, 5) ?? "", progressRate(k.id) ?? "", r.rwi_group, statusOf(k.id)[1]]; });
+    const s0 = startOf(k.id), n0 = nowOf(k.id);
+    return [k.first_name, s0 ? bandName(s0.band) : "", s0 ? fmtAge(s0.ra) : "", s0 ? fmtDate(s0.at) : "", r.band || "", bandName(r.band), n0 ? fmtAge(n0.ra) : "", grewOf(k.id) ?? "", t ? t.reading_age : "", a ?? "", gapOf(r, t) ?? "", t ? fmtDate(t.created_at) : "", S.reads.filter(x => x.student_id === k.id).length, avgLast(k.id, 5) ?? "", progressRate(k.id) ?? "", r.rwi_group, statusOf(k.id)[1]]; });
   const csv = [head, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
   const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv" })); a.download = `Nestory-${S.cls.name}.csv`; a.click();
 }
@@ -199,10 +266,10 @@ function render(){
   if(S.mode === "newpass") return app.innerHTML = `<div class="login"><img src="logo.png" alt="Nestory"><div class="card"><h2>Choose a new password</h2>${S.error ? `<div class="err">${esc(S.error)}</div>` : ""}<label>New password</label><input type="password" id="np"><button class="btn" style="margin-top:12px;width:100%;justify-content:center" onclick="newPass()">Save password</button></div></div>`;
   const alerts = S.kids.filter(k => ["down", "ready", "test", "slow"].includes(statusOf(k.id)[0])).length;
   app.innerHTML = `<div class="top"><div class="in"><a class="brand" href="index.html"><img src="bird.png" alt="">Nestory</a>
-    <div class="tabs">${[["class", "📋 My class"], ["alerts", `🔔 Alerts${alerts ? `<span class="n">${alerts}</span>` : ""}`], ["progress", "📈 Progress"], ["children", "🧒 Children"]].map(([k, l]) => `<button class="${S.tab === k ? "on" : ""}" onclick="S.tab='${k}';S.kid=null;render()">${l}</button>`).join("")}</div>
+    <div class="tabs">${[["start", "🏠 Start here"], ["class", "📋 My class"], ["alerts", `🔔 Alerts${alerts ? `<span class="n">${alerts}</span>` : ""}`], ["progress", "📈 Progress"], ["children", "🧒 Children"]].map(([k, l]) => `<button class="${S.tab === k ? "on" : ""}" onclick="S.tab='${k}';S.kid=null;render()">${l}</button>`).join("")}</div>
     <span class="sp"></span>${S.classes && S.classes.length ? `<select style="width:auto" onchange="openClass(this.value)">${S.classes.map(c => `<option value="${c.id}" ${S.cls && S.cls.id === c.id ? "selected" : ""}>${esc(c.name)} · ${esc(c.grade)}</option>`).join("")}</select>` : ""}
     <button class="link hide-sm" onclick="signOut()">Sign out</button></div></div>
-    <div class="main">${S.error ? `<div class="err">⚠️ ${esc(S.error)} <button class="link" onclick="S.error='';render()">OK</button></div>` : ""}${!S.classes ? `<div class="card empty">Loading…</div>` : !S.cls && S.tab !== "children" ? `<div class="card empty">🐣<br><br>Create your first class in the Children tab.</div>` : ({ class: classView, alerts: alertsView, progress: progressView, children: childrenView })[S.tab]()}</div>
+    <div class="main">${S.error ? `<div class="err">⚠️ ${esc(S.error)} <button class="link" onclick="S.error='';render()">OK</button></div>` : ""}${!S.classes ? `<div class="card empty">Loading…</div>` : !S.cls && !["children", "start"].includes(S.tab) ? `<div class="card empty">🐣<br><br>Start with the 🏠 Start here tab to set up your class.</div>` : ({ start: startView, class: classView, alerts: alertsView, progress: progressView, children: childrenView })[S.tab]()}</div>
     ${S.kid ? kidModal() : ""}`;
 }
 function loginView(){
@@ -212,19 +279,47 @@ function loginView(){
     <p class="hint" style="margin-top:12px;text-align:center"><button class="link" onclick="forgot()">Forgot your password?</button> · New to ThinkNest? <a class="link" href="https://wondernest.thinknest.education">Create an account</a></p></div>
     <p class="hint" style="text-align:center">Children sign in at <a class="link" href="read.html">the readers' page</a> with their class code.</p></div>`;
 }
+function startView(){
+  const hasClass = !!S.cls, kids = hasClass ? S.kids : [], tested = kids.filter(k => testsOf(k.id).length).length;
+  const done = [!!S.school, hasClass, kids.length > 0, hasClass && kids.length > 0 && tested > 0, kids.length > 0 && tested === kids.length];
+  const step = (i, title, body) => `<div class="step ${done[i] ? "done" : ""}"><div class="tick">${done[i] ? "✓" : i + 1}</div><div class="bd"><h3>${title}</h3>${body}</div></div>`;
+  const s1 = S.school ? `<p>You belong to <b>${esc(S.school.name)}</b>${S.schoolRole === "admin" ? " (school admin)" : ""}.</p><div class="row" style="margin-top:8px"><div class="codebox"><small class="hint">School code for teachers</small><b style="font-size:22px">${esc(S.school.code || "")}</b></div><p class="hint" style="flex:1;min-width:200px">Share this code with other teachers at your school so they can join. Children don't need it.</p></div>`
+    : `<p class="hint" style="margin-bottom:10px">Your school code connects you to your school, so leaders can see reading across the school. Ask your coordinator for it. It's the same code as WonderNest.</p>
+      <div class="grid2"><div><label>School code (8 characters)</label><div class="row"><input id="sc" placeholder="ABCD1234" style="flex:1;text-transform:uppercase;letter-spacing:2px"><button class="btn" onclick="joinSchool()">Join</button></div></div>
+      <div><label>Nobody at my school uses ThinkNest yet</label><div class="row"><input id="sn" placeholder="School name" style="flex:1"><button class="btn soft" onclick="createSchool()">Create</button></div></div></div>`;
+  const s2 = hasClass ? `<p>Your class: <b>${esc(S.cls.name)}</b> · ${esc(S.cls.grade)}. <button class="link" onclick="S.tab='children';render()">Add another class</button></p>`
+    : `<div class="row"><div style="flex:2;min-width:180px"><label>Class name</label><input id="cn" placeholder="For example Year 3 Blue"></div><div style="flex:1;min-width:120px"><label>Year group</label><select id="cg">${GRADES.map(g => `<option>${g}</option>`).join("")}</select></div><button class="btn" style="align-self:flex-end" onclick="addClass()">＋ Create class</button></div><p class="hint" style="margin-top:6px">Classes you already have in WonderNest appear here automatically, with the same children.</p>`;
+  const s3 = !hasClass ? `<p class="hint">Create your class first.</p>` : kids.length ? `<p><b>${kids.length}</b> children in ${esc(S.cls.name)}. <button class="link" onclick="S.tab='children';render()">Add more</button></p>`
+    : `<label>Type one first name per line</label><textarea id="nk" rows="4" placeholder="Layla&#10;Omar&#10;Sara"></textarea><button class="btn" style="margin-top:8px" onclick="addKids()">＋ Add children</button><p class="hint" style="margin-top:6px">Each child gets a secret picture to sign in with.</p>`;
+  const s4 = !kids.length ? `<p class="hint">Add your children first.</p>` : `<div class="row"><div class="codebox"><small class="hint">Class code for children</small><b>${esc(S.cls.code)}</b></div><div style="flex:1;min-width:220px"><p class="hint">Children go to <b>nestory.thinknest.education/read.html</b>, type this code, tap their name, then their secret picture.</p><button class="btn soft small" style="margin-top:8px" onclick="printCards()">🖨️ Print a code card for each child</button></div></div>`;
+  const s5 = !kids.length ? `<p class="hint">Children see the reading test as soon as they sign in for the first time.</p>` : `<p><b>${tested} of ${kids.length}</b> children have taken the test.${tested ? " Their starting points are saved in the tracker." : ""}</p>
+      <div class="prog-sm" style="height:10px;background:#EEF2F7;border-radius:8px;overflow:hidden;margin:8px 0"><i style="display:block;height:100%;width:${kids.length ? tested / kids.length * 100 : 0}%;background:#8FC9A8"></i></div>
+      <p class="hint">The test takes about 10 to 15 minutes. Children see some example questions first, so they know what to do.</p>${tested ? `<button class="btn soft small" style="margin-top:8px" onclick="S.tab='progress';render()">📈 Open the tracker</button>` : ""}`;
+  return `<div class="card hero"><img src="bird.png" alt=""><div><h1 style="margin-bottom:6px">Welcome to Nestory</h1>
+      <p>Nestory finds each child's <b>reading age</b> and <b>colour band</b> with a short reading test. Children then read texts at their band, answer questions and learn the National Curriculum grammar for their level. As they improve, they move up the colour bands, and you can see their progress over time.</p></div></div>
+    <div class="card"><div class="lbl">How Nestory works</div><div class="how">
+      <div><span class="n">1</span><b>🗺️ Reading test</b><p class="hint">Each child takes a reading test. It gives their reading age and colour band. This is their starting point.</p></div>
+      <div><span class="n">2</span><b>📚 Read at their band</b><p class="hint">Children read texts at their band, answer questions and practise grammar.</p></div>
+      <div><span class="n">3</span><b>🌟 Move up or down</b><p class="hint">80% over 5 texts unlocks a band check (70% to pass). Below 50% over 4 texts sends you an alert.</p></div>
+      <div><span class="n">4</span><b>📈 Track progress</b><p class="hint">The tracker shows each child's starting point, their reading age now, and their band colour.</p></div></div></div>
+    <div class="card"><div class="lbl">Get started: follow these steps</div>
+      ${step(0, "Join your school", s1)}${step(1, "Create your class", s2)}${step(2, "Add your children", s3)}${step(3, "Give the children their class code", s4)}${step(4, "Children take the reading test", s5)}</div>`;
+}
 function classView(){
   const K = S.kids; if(!K.length) return `<div class="card empty">No children in ${esc(S.cls.name)} yet. Add them in the Children tab.</div>`;
-  const tested = K.filter(k => reader(k.id).band), withAge = K.filter(k => gapOf(reader(k.id), lastTest(k.id)) != null);
-  const atExp = withAge.filter(k => gapOf(reader(k.id), lastTest(k.id)) >= 0).length;
-  const avgGap = withAge.length ? Math.round(withAge.reduce((a, k) => a + gapOf(reader(k.id), lastTest(k.id)), 0) / withAge.length) : null;
+  const tested = K.filter(k => reader(k.id).band), withAge = K.filter(k => gapNow(k.id) != null);
+  const atExp = withAge.filter(k => gapNow(k.id) >= 0).length;
+  const avgGap = withAge.length ? Math.round(withAge.reduce((a, k) => a + gapNow(k.id), 0) / withAge.length) : null;
+  const grew = K.map(k => grewOf(k.id)).filter(x => x != null), avgGrew = grew.length ? Math.round(grew.reduce((a, b) => a + b, 0) / grew.length) : null;
   return `<div class="row between" style="margin-bottom:14px"><h1>${esc(S.cls.name)}</h1><div class="row"><button class="btn soft small" onclick="retestAll()">🗺️ Set reading test for everyone</button><button class="btn soft small" onclick="exportCSV()">⬇️ Excel (CSV)</button></div></div>
   <div class="stats"><div class="stat"><small>Tested</small><b>${tested.length}/${K.length}</b></div><div class="stat"><small>At or above actual age</small><b>${withAge.length ? Math.round(atExp / withAge.length * 100) + "%" : "–"}</b></div>
-    <div class="stat"><small>Average gap</small><b>${avgGap == null ? "–" : (avgGap >= 0 ? "+" : "") + avgGap + "m"}</b></div><div class="stat"><small>Texts read</small><b>${S.reads.length}</b></div></div>
-  <div class="card" style="overflow-x:auto"><table><tr><th>Child</th><th>Band</th><th>Reading age</th><th class="hide-sm">Actual age</th><th>Gap</th><th class="hide-sm">Last test</th><th class="hide-sm">Texts</th><th class="hide-sm">Last 5</th><th>Status</th></tr>
-  ${K.map(k => { const r = reader(k.id), t = lastTest(k.id), a = ageNow(r), g = gapOf(r, t), st = statusOf(k.id), avg = avgLast(k.id, 5);
-    return `<tr class="click" onclick="S.kid='${k.id}';render()"><td><b>${esc(k.picture)} ${esc(k.first_name)}</b>${r.rwi_group ? `<br><span class="hint">RWI ${esc(r.rwi_group)}</span>` : ""}</td><td>${r.band ? chip(r.band) : `<span class="hint">–</span>`}</td><td>${t ? fmtAge(t.reading_age) : "–"}</td><td class="hide-sm">${fmtAge(a)}</td>
-      <td>${g == null ? `<span class="hint">${a == null && t ? "add birth month" : "–"}</span>` : `<span class="gap ${g >= 0 ? "up" : "dn"}">${g >= 0 ? "+" : ""}${g}m</span>`}</td><td class="hide-sm">${t ? fmtDate(t.created_at) : "–"}</td><td class="hide-sm">${readsInBand(k.id).length}</td><td class="hide-sm">${avg == null ? "–" : avg + "%"}</td><td><span class="status s-${st[0]}">${st[1]}</span></td></tr>`; }).join("")}</table>
-  <p class="hint" style="margin-top:10px">Tap a child to see their profile, move their band, set their RWI group or birth month, or ask them to retake the test.</p></div>`;
+    <div class="stat"><small>Average gap</small><b>${avgGap == null ? "–" : (avgGap >= 0 ? "+" : "") + avgGap + "m"}</b></div><div class="stat"><small>Average progress since start</small><b>${avgGrew == null ? "–" : (avgGrew >= 0 ? "+" : "") + avgGrew + "m"}</b></div><div class="stat"><small>Texts read</small><b>${S.reads.length}</b></div></div>
+  <div class="card" style="overflow-x:auto"><table><tr><th>Child</th><th>Starting point</th><th>Now</th><th>Progress</th><th class="hide-sm">Actual age</th><th>Gap</th><th class="hide-sm">Texts</th><th class="hide-sm">Last 5</th><th>Status</th></tr>
+  ${K.map(k => { const r = reader(k.id), t = lastTest(k.id), a = ageNow(r), g = gapNow(k.id), st = statusOf(k.id), avg = avgLast(k.id, 5), s0 = startOf(k.id), n0 = nowOf(k.id), gr = grewOf(k.id);
+    return `<tr class="click" onclick="S.kid='${k.id}';render()"><td><b>${esc(k.picture)} ${esc(k.first_name)}</b>${r.rwi_group ? `<br><span class="hint">RWI ${esc(r.rwi_group)}</span>` : ""}</td><td>${s0 ? `${raTag(s0)}<br><span class="hint">${fmtDate(s0.at)}</span>` : `<span class="hint">Not tested</span>`}</td><td>${n0 && journey(k.id).length > 1 ? raTag(n0) : n0 ? `<span class="hint">same</span>` : "–"}</td>
+      <td>${gr == null ? "–" : `<span class="gap ${gr > 0 ? "up" : gr < 0 ? "dn" : ""}">${gr > 0 ? "+" : ""}${gr}m</span>`}</td><td class="hide-sm">${fmtAge(a)}</td>
+      <td>${g == null ? `<span class="hint">${a == null && n0 ? "add birth month" : "–"}</span>` : `<span class="gap ${g >= 0 ? "up" : "dn"}">${g >= 0 ? "+" : ""}${g}m</span>`}</td><td class="hide-sm">${readsInBand(k.id).length}</td><td class="hide-sm">${avg == null ? "–" : avg + "%"}</td><td><span class="status s-${st[0]}">${st[1]}</span></td></tr>`; }).join("")}</table>
+  <p class="hint" style="margin-top:10px"><b>Starting point</b> is the first reading test. <b>Now</b> changes when a child retakes the test or moves band. Tap a child to see their profile, move their band, set their RWI group or birth month, or ask them to retake the test.</p></div>`;
 }
 function alertsView(){
   const by = t => S.kids.filter(k => statusOf(k.id)[0] === t);
@@ -242,7 +337,13 @@ function progressView(){
   const rates = K.map(k => [k, progressRate(k.id)]).filter(x => x[1] !== null).sort((a, b) => b[1] - a[1]);
   const skills = {}; K.forEach(k => { const t = lastTest(k.id); if(t) Object.entries(t.skills || {}).forEach(([s, v]) => (skills[s] = skills[s] || []).push(v)); });
   const terms = {}; S.tests.filter(t => t.kind === "test").forEach(t => { const g = gapOf(reader(t.student_id), t); if(g == null) return; const d = new Date(t.created_at), y = d.getMonth() >= 7 ? d.getFullYear() : d.getFullYear() - 1, key = `${y}/${String(y + 1).slice(2)} ` + (d.getMonth() >= 7 ? "Term 1" : d.getMonth() < 3 ? "Term 2" : "Term 3"); (terms[key] = terms[key] || []).push(g); });
-  return `<h1 style="margin-bottom:14px">Progress · ${esc(S.cls.name)}</h1><div class="grid2">
+  const trk = K.filter(k => startOf(k.id)).map(k => { const j = journey(k.id), s0 = j[0], n0 = j[j.length - 1], gr = n0.ra - s0.ra;
+    return `<tr class="click" onclick="S.kid='${k.id}';render()"><td><b>${esc(k.picture)} ${esc(k.first_name)}</b></td><td>${raTag(s0)}<br><span class="hint">${fmtDate(s0.at)}</span></td>
+      <td><span class="dots">${j.map(e => `<i title="${bandName(e.band)} · ${fmtAge(e.ra)} · ${fmtDate(e.at)}" style="background:${bandColour(e.band)}"></i>`).join("")}</span></td><td>${raTag(n0)}<br><span class="hint">${fmtDate(n0.at)}</span></td>
+      <td><span class="gap ${gr > 0 ? "up" : gr < 0 ? "dn" : ""}">${gr > 0 ? "+" : ""}${gr}m</span></td></tr>`; }).join("");
+  return `<h1 style="margin-bottom:14px">Progress · ${esc(S.cls.name)}</h1>
+    <div class="card" style="overflow-x:auto"><div class="lbl">Reading tracker: starting point → now</div>${trk ? `<table><tr><th>Child</th><th>Starting point</th><th>Journey</th><th>Now</th><th>Progress</th></tr>${trk}</table><p class="hint" style="margin-top:8px">Each dot is a test or a band move, in its band colour. Tap a child for their full chart.</p>` : `<p class="hint">The tracker fills in as children take their first reading test.</p>`}</div>
+    <div class="grid2">
     <div class="card"><div class="lbl">Children in each band</div><div class="bars">${BANDS.slice(1).filter(b => counts[b[0]] || (exp && Math.abs(b[0] - exp) <= 3)).map(b => `<div class="b"><span>${b[1]}${b[0] === exp ? " ★" : ""}</span><div class="t"><i style="width:${(counts[b[0]] || 0) / max * 100}%;background:${b[2]};box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)"></i></div><span>${counts[b[0]] || 0}</span></div>`).join("")}</div>${exp ? `<p class="hint">★ expected band for ${esc(S.cls.grade)}</p>` : ""}</div>
     <div class="card"><div class="lbl">Reading skills (latest tests, class average)</div><div class="bars">${Object.entries(skills).map(([s, v]) => { const a = Math.round(v.reduce((x, y) => x + y, 0) / v.length); return `<div class="b"><span>${SKILL_NAMES[s] || s}</span><div class="t"><i style="width:${a}%"></i></div><span>${a}%</span></div>`; }).join("") || `<p class="hint">Appears after the first tests.</p>`}</div></div>
     <div class="card"><div class="lbl">Progress rate between the last two tests</div>${rates.length ? `<div class="bars">${rates.map(([k, r]) => `<div class="b"><span>${esc(k.first_name)}</span><div class="t"><i style="width:${Math.min(100, r / 2 * 100)}%;background:${r >= 1 ? "#8FC9A8" : "#F1C27D"}"></i></div><span>${r}</span></div>`).join("")}</div><p class="hint">1.0 = expected progress · above 1.0 = accelerated · below 1.0 = slower than expected</p>` : `<p class="hint">Appears once children have taken two tests at least a month apart.</p>`}</div>
@@ -257,22 +358,22 @@ function childrenView(){
       <p class="hint" style="margin-top:10px">Classes you already have in WonderNest appear here automatically, with the same children.</p></div></div></div>`;
 }
 function svgReading(id){
-  const ts = testsOf(id); if(!ts.length) return `<p class="hint">No tests yet.</p>`;
-  const r = reader(id), pts = ts.map(t => ({ d: new Date(t.created_at), ra: t.reading_age, aa: ageAtTest(r, t) }));
+  const J = journey(id); if(!J.length) return `<p class="hint">No tests yet.</p>`;
+  const r = reader(id), pts = J.map(e => ({ d: new Date(e.at), ra: e.ra, aa: e.aa, band: e.band }));
   const vals = pts.flatMap(p => [p.ra, p.aa]).filter(v => v != null), lo = Math.min(...vals) - 6, hi = Math.max(...vals) + 6;
   const W = 560, H = 220, x = i => 50 + (pts.length === 1 ? (W - 80) / 2 : i * (W - 80) / (pts.length - 1)), y = v => H - 30 - (v - lo) / (hi - lo) * (H - 50);
   const line = (k, col, dash) => { const p = pts.map((q, i) => q[k] == null ? null : `${x(i)},${y(q[k])}`).filter(Boolean); return p.length > 1 ? `<polyline fill="none" stroke="${col}" stroke-width="3" ${dash ? 'stroke-dasharray="6 5"' : ""} points="${p.join(" ")}"/>` : ""; };
   return `<svg viewBox="0 0 ${W} ${H}" style="width:100%">${[lo, (lo + hi) / 2, hi].map(v => `<line x1="45" x2="${W - 20}" y1="${y(v)}" y2="${y(v)}" stroke="#EEF2F7"/><text x="4" y="${y(v) + 4}" font-size="11" fill="#6B7689">${fmtAge(Math.round(v))}</text>`).join("")}
-    ${line("aa", "#C9D2DE", true)}${pts.map((p, i) => p.aa == null ? "" : `<circle cx="${x(i)}" cy="${y(p.aa)}" r="4" fill="#C9D2DE"/>`).join("")}${line("ra", "#5F8FCB")}${pts.map((p, i) => `<circle cx="${x(i)}" cy="${y(p.ra)}" r="5" fill="#fff" stroke="#5F8FCB" stroke-width="3"/><text x="${x(i)}" y="${H - 8}" font-size="11" fill="#6B7689" text-anchor="middle">${fmtDate(p.d)}</text>`).join("")}</svg>
-    <p class="hint"><span style="color:#5F8FCB;font-weight:900">━</span> Estimated reading age ${r.birth_month ? `<span style="color:#9AA5B5;font-weight:900;margin-left:10px">┅</span> Actual age` : "· add a birth month to compare with actual age"}</p>`;
+    ${line("aa", "#C9D2DE", true)}${pts.map((p, i) => p.aa == null ? "" : `<circle cx="${x(i)}" cy="${y(p.aa)}" r="4" fill="#C9D2DE"/>`).join("")}${line("ra", "#5F8FCB")}${pts.map((p, i) => `<circle cx="${x(i)}" cy="${y(p.ra)}" r="8" fill="${bandColour(p.band)}" stroke="#5F8FCB" stroke-width="2.5"><title>${bandName(p.band)} · ${fmtAge(p.ra)}</title></circle>${i === 0 ? `<text x="${x(i)}" y="${y(p.ra) - 13}" font-size="11" font-weight="bold" fill="#44546F" text-anchor="middle">Start</text>` : ""}<text x="${x(i)}" y="${H - 8}" font-size="11" fill="#6B7689" text-anchor="middle">${fmtDate(p.d)}</text>`).join("")}</svg>
+    <p class="hint"><span style="color:#5F8FCB;font-weight:900">━</span> Reading age (dots show the band colour) ${r.birth_month ? `<span style="color:#9AA5B5;font-weight:900;margin-left:10px">┅</span> Actual age` : "· add a birth month to compare with actual age"}</p>`;
 }
 function kidModal(){
   const k = S.kids.find(x => x.id === S.kid); if(!k) return "";
   const r = reader(k.id), t = lastTest(k.id), a = ageNow(r), mv = S.moves.filter(m => m.student_id === k.id).slice().reverse(), rd = S.reads.filter(x => x.student_id === k.id).slice().reverse(), pr = progressRate(k.id);
   return `<div class="modal" onclick="if(event.target===this){S.kid=null;render()}"><div class="box">
     <div class="row between" style="margin-bottom:14px"><h1>${esc(k.picture)} ${esc(k.first_name)}</h1><button class="btn soft small" onclick="S.kid=null;render()">Close</button></div>
-    <div class="stats"><div class="stat"><small>Band</small><b style="font-size:22px">${r.band ? chip(r.band) : "–"}</b></div><div class="stat"><small>Reading age</small><b>${t ? fmtAge(t.reading_age) : "–"}</b></div><div class="stat"><small>Actual age</small><b>${fmtAge(a)}</b></div><div class="stat"><small>Gap at last test</small><b>${gapOf(r, t) == null ? "–" : (gapOf(r, t) >= 0 ? "+" : "") + gapOf(r, t) + "m"}</b></div><div class="stat"><small>Progress rate</small><b>${pr ?? "–"}</b></div></div>
-    <div class="grid2"><div class="card"><div class="lbl">Reading age over time</div>${svgReading(k.id)}</div>
+    ${(() => { const s0 = startOf(k.id), n0 = nowOf(k.id), gr = grewOf(k.id), g = gapNow(k.id); return `<div class="stats"><div class="stat"><small>Starting point${s0 ? " · " + fmtDate(s0.at) : ""}</small><b style="font-size:18px">${s0 ? raTag(s0) : "Not tested"}</b></div><div class="stat"><small>Now</small><b style="font-size:18px">${n0 ? raTag(n0) : "–"}</b></div><div class="stat"><small>Progress since start</small><b>${gr == null ? "–" : (gr > 0 ? "+" : "") + gr + "m"}</b></div><div class="stat"><small>Actual age</small><b>${fmtAge(a)}</b></div><div class="stat"><small>Gap now</small><b>${g == null ? "–" : (g >= 0 ? "+" : "") + g + "m"}</b></div></div>`; })()}
+    <div class="grid2"><div class="card"><div class="lbl">Reading age and band over time</div>${svgReading(k.id)}</div>
       <div class="card"><div class="lbl">Skills in the latest test</div>${t ? `<div class="bars">${Object.entries(t.skills || {}).map(([s, v]) => `<div class="b"><span>${SKILL_NAMES[s] || s}</span><div class="t"><i style="width:${v}%"></i></div><span>${v}%</span></div>`).join("")}</div><p class="hint">Test on ${fmtDate(t.created_at)} · ${t.score}% correct overall</p>` : `<p class="hint">No test yet.</p>`}</div></div>
     <div class="grid2"><div class="card"><div class="lbl">Settings</div>
         <label>Move to a band</label><div class="row"><select id="mb" style="flex:1">${BANDS.slice(1).map(b => `<option value="${b[0]}" ${b[0] === r.band ? "selected" : ""}>${b[0]}. ${b[1]} (${b[3]})</option>`).join("")}</select><button class="btn small" onclick="setBand('${k.id}', +$('#mb').value, $('#mn').value || 'teacher choice')">Move</button></div>

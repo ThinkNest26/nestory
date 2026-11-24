@@ -138,7 +138,7 @@ const SCREENS = {
     <button class="btn" id="go" style="margin-top:14px" onclick="classCode=$('#cc').value.trim();if(classCode)loadRoster()">Let's go ➜</button><p class="msg"></p></div></div>`,
   names: () => head("Who are you?", esc(roster.class_name), "code") + `<div class="body"><div class="card"><div class="names">${roster.students.map(s => `<button onclick='chosen=${JSON.stringify(s)};go("pic")'>${esc(s.first_name)}</button>`).join("")}</div></div></div>`,
   pic: () => head(`Hi ${esc(chosen.first_name)}!`, "Tap your secret picture", "names") + `<div class="body"><div class="card"><div class="pics">${PICTURES.map(p => `<button onclick="tryPicture('${p}', this)">${p}</button>`).join("")}</div><p class="msg"></p></div></div>`,
-  home: homeView, test: testView, read: readView, check: checkView, result: resultView
+  home: homeView, intro: introView, test: testView, read: readView, check: checkView, result: resultView
 };
 function draw(){ $("#app").innerHTML = (SCREENS[screen] || SCREENS.home)(); }
 
@@ -146,11 +146,35 @@ function bandPath(b){ return `<div class="path" aria-label="My reading journey">
 function homeView(){
   const b = ns.band, needTest = ns.retest || !b, here = TEXTS.filter(t => t.band === b), doneIds = reads.filter(r => r.band === b).map(r => r.text_id);
   return `<div class="head"><img src="bird.png" alt=""><div><div class="hi">Hello,</div><h1>${esc(me.first_name)}'s reading nest</h1></div><button class="back" onclick="bye()">👋 Bye</button></div><div class="body">
-    ${needTest ? `<div class="card center"><div style="font-size:54px">🗺️</div><h2 class="big">${b ? "Time for a new reading quest!" : "Your reading quest"}</h2><p class="sub">Read some sentences and short stories. Nestory will find the books that are just right for you. Take your time; there's no rush.</p><button class="btn green" onclick="startTest()">Start my reading quest ➜</button></div>` : ""}
+    ${needTest ? `<div class="card center"><div style="font-size:54px">🗺️</div><h2 class="big">${b ? "Time for a new reading quest!" : "Your reading quest"}</h2><p class="sub">Read some sentences and short stories. Nestory will find the books that are just right for you. Take your time; there's no rush.</p><button class="btn green" onclick="EX={a:null,b:null};go('intro');speak(INTRO_SAY)">Start my reading quest ➜</button></div>` : ""}
     ${b ? `<div class="card"><div class="bandcard"><div class="dot" style="background:${bandColour(b)}"></div><div><small>I'm ${aBand(b)}</small><b>${bandName(b)} reader</b><small>${reads.length} ${reads.length === 1 ? "book" : "books"} read</small></div></div>${bandPath(b)}</div>` : ""}
     ${b && ns.ready_check ? `<div class="card center" style="background:var(--green)"><div style="font-size:44px">🌟</div><h2 class="big">You're ready for a band check!</h2><p class="sub" style="color:var(--gink)">Answer some questions from ${bandName(b + 1)} band. If you do well, you'll move up!</p><button class="btn green" onclick="startCheck()">Start my band check</button></div>` : ""}
     ${b && !needTest ? `<div class="card"><h2 style="margin-bottom:12px">📚 My bookshelf</h2>${here.length ? `<div class="shelf">${here.map(t => `<button class="book" style="background:${bandColour(b)}" onclick="openText('${t.id}')">${doneIds.includes(t.id) ? `<span class="tick">✓ read</span>` : ""}<small>${esc(t.type)}</small><b>${esc(t.title)}</b><small>Tap to read</small></button>`).join("")}</div>` : `<p class="sub">New ${bandName(b)} books are being written for you. Ask your teacher what to read today!</p>`}</div>` : ""}
   </div>`;
+}
+
+/* ---------- before the test: what will happen, with examples ---------- */
+let EX = { a: null, b: null };
+const INTRO_SAY = "Now you will take your reading quest. It helps your teacher find your reading age and your colour band. First, choose the missing word. Then, read a short story and answer some questions. Try the examples first.";
+const EXA = { s: "The bird built a ___ in the tree.", opts: ["nest", "shoe", "car"], a: 0 };
+const EXB = { text: "Sam has a red kite. He takes it to the park. The wind lifts it up high into the sky.", q: "Where does Sam take his kite?", opts: ["to the park", "to school", "to the beach"], a: 0 };
+function exPick(part, i){ EX[part] = i; speak((part === "a" ? EXA : EXB).a === i ? "That's right!" : "Not quite. Have another look."); draw(); }
+function exOpts(part, X){ return `<div class="opts">${X.opts.map((o, i) => `<button class="${EX[part] === i ? (i === X.a ? "right" : "wrong") : ""}" onclick="exPick('${part}', ${i})">${esc(o)}</button>`).join("")}</div>
+  ${EX[part] !== null ? `<p class="sub" style="margin:10px 0 0;color:${EX[part] === X.a ? "var(--gink)" : "#B4532A"}">${EX[part] === X.a ? "✓ That's right!" : "Not quite. Try again!"}</p>` : ""}`; }
+function introView(){
+  const again = testsTaken > 0;
+  return head(again ? "A new reading quest" : "Your first reading quest", "Before you start", "home") + `<div class="body">
+    <div class="card"><div class="row" style="align-items:flex-start"><div style="font-size:48px">🗺️</div><div style="flex:1"><h2 style="margin-bottom:6px">What will I do?</h2>
+      <p style="font-weight:700;line-height:1.6">${again ? "You will take the reading quest again, to see how much your reading has grown!" : "Now you will take your first reading test."} It helps your teacher find your <b>reading age</b> and your <b>colour band</b>, so your bookshelf has books that are just right for you.</p></div>
+      <button class="speak" onclick="speak(INTRO_SAY)" aria-label="Read this to me">🔊</button></div>
+      <div style="margin-top:12px;font-weight:800;line-height:1.9">1️⃣ Choose the missing word in some sentences.<br>2️⃣ Read a short story and answer some questions.<br>⏱️ Take your time. Some questions are easy and some are tricky. Just do your best!</div></div>
+    <div class="card q"><div class="lbl">Example 1 · Part 1</div><p class="sub" style="text-align:left;margin-bottom:8px">Read the sentence. Which word fits best?</p>
+      <h2>${esc(EXA.s).replace("___", '<span style="display:inline-block;min-width:80px;border-bottom:3px solid var(--blue2)">&nbsp;</span>')}</h2>${exOpts("a", EXA)}</div>
+    <div class="card q"><div class="lbl">Example 2 · Part 2</div><p class="sub" style="text-align:left;margin-bottom:8px">Read the story. Then answer the question.</p>
+      <div class="reader" style="font-size:19px;background:var(--sky2);border-radius:14px;padding:12px 14px;margin-bottom:12px"><p style="margin:0">${esc(EXB.text)}</p></div>
+      <h2>${esc(EXB.q)}</h2>${exOpts("b", EXB)}</div>
+    <p class="sub">In the real quest, I won't tell you if you're right. Just choose your best answer!</p>
+    <button class="btn green" onclick="startTest()">I'm ready: start the real quest ➜</button></div>`;
 }
 
 /* ---------- reading test (adaptive) ---------- */
