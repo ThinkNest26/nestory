@@ -230,7 +230,10 @@ let RD = null, R = null;
 function openText(id){ const t = TEXTS.find(x => x.id === id); RD = { t, step: "read", qi: 0, gi: 0, comp: 0, gram: 0, answers: [], start: Date.now(), picked: null }; go("read"); }
 function marked(p, t, showSpots){
   let h = esc(p);
-  if(showSpots) (t.grammar.spots || []).forEach(s => { const e = esc(s); if(h.includes(e)) h = h.split(e).join(`<mark>${e}</mark>`); });
+  if(showSpots && (t.grammar.spots || []).length){
+    const re = new RegExp(t.grammar.spots.map(esc).sort((a, b) => b.length - a.length).map(x => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"), "g");
+    h = h.replace(re, m => `<mark>${m}</mark>`);
+  }
   Object.keys(t.vocab || {}).forEach(w => { h = h.replace(new RegExp(`\\b(${w})\\b(?![^<]*>)`, "i"), `<span class="w" onclick="wordTip('${w}')">$1</span>`); });
   return h;
 }
