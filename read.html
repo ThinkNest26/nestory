@@ -29,7 +29,7 @@
   .btn:disabled{opacity:.5}
   .big{font-size:24px;text-align:center;margin:10px 0 6px}
   .sub{text-align:center;color:var(--muted);font-weight:700;margin-bottom:16px}
-  input.code{width:100%;font-size:30px;text-align:center;letter-spacing:.2em;font-weight:900;border:2px solid var(--line);border-radius:18px;padding:14px;text-transform:uppercase;color:var(--navy);font-family:inherit}
+  input.code{width:100%;font-size:30px;text-align:center;letter-spacing:.08em;font-weight:900;border:2px solid var(--line);border-radius:18px;padding:14px;text-transform:uppercase;color:var(--navy);font-family:inherit}
   .msg{text-align:center;color:#B4532A;font-weight:800;min-height:24px;margin-top:10px}
   .names{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
   .names button{background:var(--sky);border-radius:16px;padding:16px 8px;font-weight:900;font-size:18px;color:var(--navy)}
@@ -123,25 +123,23 @@ async function start(){
   try{
     const { data: { session } } = await db.auth.getSession();
     if(!session){ const r = await db.auth.signInAnonymously(); if(r.error) throw r.error; }
+    const k = new URLSearchParams(location.hash.slice(1)).get("k");
+    if(k){ history.replaceState(null, "", location.pathname); return codeLogin(k); }
     const { data } = await db.rpc("me_student");
     if(data){ me = data; await loadMe(); return go("home"); }
-    const code = new URLSearchParams(location.search).get("c");
-    if(code){ classCode = code; return loadRoster(); }
     go("code");
   }catch(e){ $("#app").innerHTML = `<div class="body center"><h2 class="big">Oops!</h2><p class="sub">Nestory can't connect right now. Please ask your teacher.</p></div>`; }
 }
-async function loadRoster(){
-  const { data } = await db.rpc("class_roster", { p_code: classCode });
-  if(!data){ go("code"); $(".msg").textContent = "I can't find that class code. Check it with your teacher."; return; }
-  roster = data; go("names");
+/* Each child has their own sign-in code (on their QR card). */
+async function codeLogin(code){
+  code = String(code || "").trim(); if(!code) return;
+  const { data, error } = await db.rpc("ns_code_login", { p_code: code });
+  if(!error && data && data.ok){ const r = await db.rpc("me_student"); me = r.data; await loadMe(); go("home"); speak("Hello " + me.first_name + "!"); return; }
+  go("code"); $("#cc").value = code.toUpperCase();
+  const why = (data && data.reason) || "";
+  $(".msg").textContent = why === "locked" ? "Too many tries. Please ask your teacher for help." : why === "busy" ? "Please wait a minute and try again." : "I can't find that code. Check your card or ask your teacher.";
 }
-async function tryPicture(pic, el){
-  const { data, error } = await db.rpc("student_login", { p_code: classCode, p_student: chosen.id, p_picture: pic });
-  if(error){ $(".msg").textContent = "Something went wrong. Try again."; return; }
-  if(data.ok){ const r = await db.rpc("me_student"); me = r.data; await loadMe(); go("home"); speak("Hello " + me.first_name + "!"); return; }
-  el.classList.add("shake"); setTimeout(() => el.classList.remove("shake"), 400);
-  $(".msg").textContent = data.reason === "locked" ? "Too many tries. Ask your teacher, or wait 10 minutes." : "Not that one. Try again!";
-}
+window.addEventListener("hashchange", () => { const k = new URLSearchParams(location.hash.slice(1)).get("k"); if(k){ history.replaceState(null, "", location.pathname); codeLogin(k); } });
 async function loadMe(){
   const [a, b, c, w] = await Promise.all([db.rpc("ns_me"), db.from("ns_reads").select("text_id, band, score, comp, grammar, seconds, answers, created_at").eq("student_id", me.student_id).order("created_at"),
     db.from("ns_tests").select("kind, band, reading_age, skills, created_at").eq("student_id", me.student_id).order("created_at"), db.rpc("ns_my_window")]);
@@ -153,11 +151,9 @@ async function bye(){ if(!confirm("Leave Nestory?")) return; await db.rpc("stude
 const SCREENS = {
   load: () => `<div class="loading"><img src="bird.png" alt="Loading"></div>`,
   code: () => `<div class="body" style="padding-top:40px"><div class="center"><img src="logo.png" alt="Nestory" style="width:210px"></div>
-    <div class="card"><h2 class="big">What's your class code?</h2><p class="sub">Your teacher will tell you.</p>
-    <input class="code" id="cc" maxlength="8" autocomplete="off" value="${esc(classCode)}" onkeydown="if(event.key==='Enter')$('#go').click()">
-    <button class="btn" id="go" style="margin-top:14px" onclick="classCode=$('#cc').value.trim();if(classCode)loadRoster()">Let's go ➜</button><p class="msg"></p></div></div>`,
-  names: () => head("Who are you?", esc(roster.class_name), "code") + `<div class="body"><div class="card"><div class="names">${roster.students.map(s => `<button onclick='chosen=${JSON.stringify(s)};go("pic")'>${esc(s.first_name)}</button>`).join("")}</div></div></div>`,
-  pic: () => head(`Hi ${esc(chosen.first_name)}!`, "Tap your secret picture", "names") + `<div class="body"><div class="card"><div class="pics">${PICTURES.map(p => `<button onclick="tryPicture('${p}', this)">${p}</button>`).join("")}</div><p class="msg"></p></div></div>`,
+    <div class="card"><h2 class="big">What's your reading code?</h2><p class="sub">It's on your Nestory card. Or point the iPad camera at the QR code on your card.</p>
+    <input class="code" id="cc" maxlength="14" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="TIGER-4782" onkeydown="if(event.key==='Enter')$('#go').click()">
+    <button class="btn" id="go" style="margin-top:14px" onclick="codeLogin($('#cc').value)">Let's go ➜</button><p class="msg"></p></div></div>`,
   home: homeView, intro: introView, assess: assessView, early: earlyView, test: testView, read: readView, check: checkView, result: resultView
 };
 function draw(){ $("#app").innerHTML = (SCREENS[screen] || SCREENS.home)(); }

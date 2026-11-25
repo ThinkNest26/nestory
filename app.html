@@ -8,7 +8,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="content.js"></script>
+<script src="qr.js"></script>
 <style>
+  .ggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}.gcard{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px}.gcard.mine{box-shadow:0 0 0 3px #8FC9A8}.gcard a.btn{text-decoration:none}
+  table.codes{width:100%;border-collapse:collapse}table.codes td{padding:8px 6px;border-top:1px solid var(--line)}table.codes .mono{font-weight:800;letter-spacing:1px;color:var(--navy)}
   :root{--navy:#44546F;--ink:#2E3A4F;--blue:#7FA8DA;--blue2:#5F8FCB;--sky:#E3EDF8;--sky2:#F5F9FD;--green:#E2F1E8;--gink:#2D6248;--amber:#FFF4DE;--aink:#8A5A12;--rose:#FBEDE7;--rink:#9A4022;--muted:#6B7689;--line:#DCE6F2}
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:"Nunito",system-ui,sans-serif;color:var(--ink);background:#F7F9FB;font-size:15px}
@@ -188,12 +191,14 @@ async function loadClasses(){
 }
 async function openClass(id, first){
   S.cls = S.classes.find(c => c.id === id); localStorage.setItem("ns_class", id); S.kid = null;
-  const [k, r, t, rd, m] = await Promise.all([
+  const [k, r, t, rd, m, lg] = await Promise.all([
     db.from("students").select("id, first_name, picture").eq("class_id", id).order("first_name"),
     db.from("ns_readers").select("*").eq("class_id", id),
     db.from("ns_tests").select("*").eq("class_id", id).order("created_at"),
     db.from("ns_reads").select("id, student_id, band, text_id, comp, grammar, score, seconds, answers, created_at").eq("class_id", id).order("created_at"),
-    db.from("ns_moves").select("*").eq("class_id", id).order("created_at")]);
+    db.from("ns_moves").select("*").eq("class_id", id).order("created_at"),
+    db.rpc("ns_class_logins", { p_class: id })]);
+  S.codes = {}; (lg.data || []).forEach(x => S.codes[x.student_id] = x.code);
   S.kids = k.data || []; S.readers = r.data || []; S.tests = t.data || []; S.reads = rd.data || []; S.moves = m.data || [];
   if(first) S.tab = S.kids.length && S.kids.every(k => testsOf(k.id).length) ? "class" : "start";
   render();
@@ -267,12 +272,21 @@ async function addKids(){
   const { error } = await db.from("students").insert(rows); if(error){ S.error = errMsg(error); return render(); }
   toast(`${rows.length} added ✓`); openClass(S.cls.id);
 }
-function printCards(){
-  const url = location.origin + location.pathname.replace(/app\.html$/, "") + "read.html";
+function readUrl(){ return location.origin + location.pathname.replace(/app\.html$/, "") + "read.html"; }
+function printCards(only){
+  const url = readUrl(), kids = S.kids.filter(k => S.codes[k.id] && (!only || k.id === only));
+  if(!kids.length) return toast("No codes yet. Please refresh the page.");
   const w = window.open("", "_blank"); if(!w) return toast("Please allow pop-ups to print the cards");
-  w.document.write(`<!DOCTYPE html><html><head><title>Nestory code cards · ${esc(S.cls.name)}</title><style>body{font-family:Arial,sans-serif;margin:16px;color:#2E3A4F}.g{display:grid;grid-template-columns:1fr 1fr;gap:12px}.c{border:2px dashed #9FB3CC;border-radius:14px;padding:14px;break-inside:avoid}.c b{font-size:22px}.p{font-size:40px;float:right}.k{font-size:26px;letter-spacing:4px;font-weight:bold;color:#44546F;background:#E3EDF8;border-radius:8px;padding:4px 10px;display:inline-block;margin:6px 0}small{color:#6B7689}@media print{button{display:none}}</style></head><body>
-    <button onclick="print()" style="padding:10px 18px;font-size:16px;margin-bottom:12px">🖨️ Print</button><div class="g">${S.kids.map(k => `<div class="c"><span class="p">${esc(k.picture)}</span><b>${esc(k.first_name)}</b><br><small>Nestory · ${esc(S.cls.name)}</small><br><small>1. Go to</small> <b style="font-size:14px">${esc(url.replace(/^https?:\/\//, ""))}</b><br><small>2. Type the class code</small><br><span class="k">${esc(S.cls.code)}</span><br><small>3. Tap your name, then your secret picture</small></div>`).join("")}</div></body></html>`);
+  w.document.write(`<!DOCTYPE html><html><head><title>Nestory reading cards · ${esc(S.cls.name)}</title><style>body{font-family:Arial,sans-serif;margin:16px;color:#2E3A4F}.g{display:grid;grid-template-columns:1fr 1fr;gap:12px}.c{border:2px dashed #9FB3CC;border-radius:14px;padding:14px;break-inside:avoid;display:flex;gap:14px;align-items:center}.c svg{flex:none}.c b{font-size:22px}.k{font-size:22px;letter-spacing:2px;font-weight:bold;color:#44546F;background:#E3EDF8;border-radius:8px;padding:4px 10px;display:inline-block;margin:6px 0}small{color:#6B7689;line-height:1.5}@media print{button{display:none}}</style></head><body>
+    <button onclick="print()" style="padding:10px 18px;font-size:16px;margin-bottom:12px">🖨️ Print</button><div class="g">${kids.map(k => `<div class="c">${qrSVG(url + "#k=" + S.codes[k.id], 130)}<div><b>${esc(k.first_name)}</b><br><small>Nestory · ${esc(S.cls.name)}</small><br><span class="k">${esc(S.codes[k.id])}</span><br><small>Point the iPad camera at the QR code.<br>Or go to <b style="font-size:13px">${esc(url.replace(/^https?:\/\//, ""))}</b> and type your code.<br>Keep your card secret!</small></div></div>`).join("")}</div></body></html>`);
   w.document.close();
+}
+async function newCode(id){
+  const k = S.kids.find(x => x.id === id);
+  if(!confirm(`Give ${k.first_name} a new reading code? The old card will stop working.`)) return;
+  const { data, error } = await db.rpc("ns_new_login_code", { p_student: id });
+  if(error){ S.error = errMsg(error); return render(); }
+  S.codes[id] = data; toast("New code ✓ Print a new card"); render();
 }
 function exportCSV(){
   const ws = yearWindows(S.windows, pickYear(S.windows)), rows0 = S.kids.map(classChild);
@@ -296,18 +310,29 @@ function render(){
   if(S.mode === "newpass") return app.innerHTML = `<div class="login"><img src="logo.png" alt="Nestory"><div class="card"><h2>Choose a new password</h2>${S.error ? `<div class="err">${esc(S.error)}</div>` : ""}<label>New password</label><input type="password" id="np"><button class="btn" style="margin-top:12px;width:100%;justify-content:center" onclick="newPass()">Save password</button></div></div>`;
   const alerts = S.kids.filter(k => ["down", "ready", "test", "slow"].includes(statusOf(k.id)[0])).length;
   app.innerHTML = `<div class="top"><div class="in"><a class="brand" href="index.html"><img src="bird.png" alt="">Nestory</a>
-    <div class="tabs">${[["start", "🏠 Start here"], ...(S.schoolRole === "admin" ? [["school", "🏫 Whole school"]] : []), ["class", "📋 My class"], ["alerts", `🔔 Alerts${alerts ? `<span class="n">${alerts}</span>` : ""}`], ["progress", "📈 Tracker"], ["children", "🧒 Children"]].map(([k, l]) => `<button class="${S.tab === k ? "on" : ""}" onclick="S.tab='${k}';S.kid=null;render()">${l}</button>`).join("")}</div>
+    <div class="tabs">${[["start", "🏠 Start here"], ...(S.schoolRole === "admin" ? [["school", "🏫 Whole school"]] : []), ["class", "📋 My class"], ["alerts", `🔔 Alerts${alerts ? `<span class="n">${alerts}</span>` : ""}`], ["progress", "📈 Tracker"], ["children", "🧒 Children"], ["guides", "📚 Guides"]].map(([k, l]) => `<button class="${S.tab === k ? "on" : ""}" onclick="S.tab='${k}';S.kid=null;render()">${l}</button>`).join("")}</div>
     <span class="sp"></span>${S.classes && S.classes.length && S.tab !== "school" ? `<select style="width:auto" onchange="openClass(this.value)">${S.classes.map(c => `<option value="${c.id}" ${S.cls && S.cls.id === c.id ? "selected" : ""}>${esc(c.name)} · ${esc(c.grade)}</option>`).join("")}</select>` : ""}
     <button class="link hide-sm" onclick="signOut()">Sign out</button></div></div>
-    <div class="main">${S.error ? `<div class="err">⚠️ ${esc(S.error)} <button class="link" onclick="S.error='';render()">OK</button></div>` : ""}${!S.classes ? `<div class="card empty">Loading…</div>` : !S.cls && !["children", "start", "school"].includes(S.tab) ? `<div class="card empty">🐣<br><br>Start with the 🏠 Start here tab to set up your class.</div>` : ({ start: startView, school: schoolView, class: classView, alerts: alertsView, progress: progressView, children: childrenView })[S.tab]()}</div>
+    <div class="main">${S.error ? `<div class="err">⚠️ ${esc(S.error)} <button class="link" onclick="S.error='';render()">OK</button></div>` : ""}${!S.classes ? `<div class="card empty">Loading…</div>` : !S.cls && !["children", "start", "school", "guides"].includes(S.tab) ? `<div class="card empty">🐣<br><br>Start with the 🏠 Start here tab to set up your class.</div>` : ({ start: startView, school: schoolView, class: classView, alerts: alertsView, progress: progressView, children: childrenView, guides: guidesView })[S.tab]()}</div>
     ${S.kid ? kidModal() : ""}`;
+}
+function guidesView(){
+  const yrs = m => `${Math.floor(m / 12)}y${m % 12 ? " " + (m % 12) + "m" : ""}`;
+  const stages = [["Early years · read with an adult", 1, 4], ["Year 1 and Year 2", 5, 10], ["Year 3 to Year 6", 11, 16], ["Stretch bands · beyond Year 6", 17, 20]];
+  const mine = S.cls ? expectedBand(S.cls.grade) : 0;
+  const card = b => { const B = BANDS[b], file = "guides/Nestory-" + B[1].replace(/ /g, "-") + "-Band-Guide", n = TEXTS.filter(t => t.band === b).length;
+    return `<div class="gcard${b === mine ? " mine" : ""}" style="border-top:8px solid ${B[2]}"><div class="row between"><b style="font-size:17px">${b}. ${esc(B[1])}</b>${b === mine ? `<span class="chip" style="background:var(--green)">${esc(S.cls.grade)}</span>` : ""}</div>
+      <p class="hint" style="margin:4px 0 2px">${esc(B[3])} · reading age ${yrs(B[4])}–${yrs(B[5])}</p><p class="hint" style="margin-bottom:10px">${n} texts · ${esc(B[6])}</p>
+      <div class="row"><a class="btn small" href="${file}.pdf" target="_blank" rel="noopener">👁 View</a><a class="btn small soft" href="${file}.docx" download>⬇ Word</a></div></div>`; };
+  return `<div class="card"><h2 style="margin-bottom:4px">📚 Band guides</h2><p class="hint">Everything about each colour band: year group, reading age, grammar focus, and every reading text with its vocabulary, questions, answers and grammar practice. <b>View</b> opens the guide here; <b>Word</b> downloads a copy you can edit or print.</p></div>
+    ${stages.map(([t, a, z]) => `<div class="lbl" style="margin:18px 4px 8px">${t}</div><div class="ggrid">${Array.from({ length: z - a + 1 }, (_, i) => card(a + i)).join("")}</div>`).join("")}`;
 }
 function loginView(){
   return `<div class="login"><img src="logo.png" alt="Nestory"><div class="card"><h2 style="margin-bottom:4px">Teacher sign in</h2><p class="hint" style="margin-bottom:14px">Use the same email and password as WonderNest.</p>
     ${S.error ? `<div class="err">${esc(S.error)}</div>` : ""}<label>Email</label><input id="em" type="email" autocomplete="username"><label style="margin-top:10px">Password</label><input id="pw" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')signIn()">
     <button class="btn" style="margin-top:14px;width:100%;justify-content:center" onclick="signIn()">Sign in</button>
     <p class="hint" style="margin-top:12px;text-align:center"><button class="link" onclick="forgot()">Forgot your password?</button> · New to ThinkNest? <a class="link" href="https://wondernest.thinknest.education">Create an account</a></p></div>
-    <p class="hint" style="text-align:center">Children sign in at <a class="link" href="read.html">the readers' page</a> with their class code.</p></div>`;
+    <p class="hint" style="text-align:center">Children sign in at <a class="link" href="read.html">the readers' page</a> with their own reading code or QR card.</p></div>`;
 }
 function startView(){
   const hasClass = !!S.cls, kids = hasClass ? S.kids : [], tested = kids.filter(k => testsOf(k.id).length).length;
@@ -320,8 +345,8 @@ function startView(){
   const s2 = hasClass ? `<p>Your class: <b>${esc(S.cls.name)}</b> · ${esc(S.cls.grade)}. <button class="link" onclick="S.tab='children';render()">Add another class</button></p>`
     : `<div class="row"><div style="flex:2;min-width:180px"><label>Class name</label><input id="cn" placeholder="For example Year 3 Blue"></div><div style="flex:1;min-width:120px"><label>Year group</label><select id="cg">${GRADES.map(g => `<option>${g}</option>`).join("")}</select></div><button class="btn" style="align-self:flex-end" onclick="addClass()">＋ Create class</button></div><p class="hint" style="margin-top:6px">Classes you already have in WonderNest appear here automatically, with the same children.</p>`;
   const s3 = !hasClass ? `<p class="hint">Create your class first.</p>` : kids.length ? `<p><b>${kids.length}</b> children in ${esc(S.cls.name)}. <button class="link" onclick="S.tab='children';render()">Add more</button></p>`
-    : `<label>Type one first name per line</label><textarea id="nk" rows="4" placeholder="Layla&#10;Omar&#10;Sara"></textarea><button class="btn" style="margin-top:8px" onclick="addKids()">＋ Add children</button><p class="hint" style="margin-top:6px">Each child gets a secret picture to sign in with.</p>`;
-  const s4 = !kids.length ? `<p class="hint">Add your children first.</p>` : `<div class="row"><div class="codebox"><small class="hint">Class code for children</small><b>${esc(S.cls.code)}</b></div><div style="flex:1;min-width:220px"><p class="hint">Children go to <b>nestory.thinknest.education/read.html</b>, type this code, tap their name, then their secret picture.</p><button class="btn soft small" style="margin-top:8px" onclick="printCards()">🖨️ Print a code card for each child</button></div></div>`;
+    : `<label>Type one first name per line</label><textarea id="nk" rows="4" placeholder="Layla&#10;Omar&#10;Sara"></textarea><button class="btn" style="margin-top:8px" onclick="addKids()">＋ Add children</button><p class="hint" style="margin-top:6px">Each child gets their own reading code and QR card.</p>`;
+  const s4 = !kids.length ? `<p class="hint">Add your children first.</p>` : `<p class="hint">Every child has their own reading code, such as <b>TIGER-4782</b>, and a card with a QR code. On an iPad, they point the camera at their QR code and they are signed straight in. They can also type their code at <b>nestory.thinknest.education/read.html</b>. Nobody can sign in as somebody else without their card.</p><button class="btn soft small" style="margin-top:8px" onclick="printCards()">🖨️ Print a card for each child</button> <button class="link" onclick="S.tab='children';render()">See all codes</button>`;
   const s5 = !kids.length ? `<p class="hint">Children see the reading test as soon as they sign in for the first time.</p>` : `<p><b>${tested} of ${kids.length}</b> children have taken the test.${tested ? " Their starting points are saved in the tracker." : ""}</p>
       <div class="prog-sm" style="height:10px;background:#EEF2F7;border-radius:8px;overflow:hidden;margin:8px 0"><i style="display:block;height:100%;width:${kids.length ? tested / kids.length * 100 : 0}%;background:#8FC9A8"></i></div>
       <p class="hint">The test takes about 10 to 15 minutes. Children see some example questions first, so they know what to do.</p>${tested ? `<button class="btn soft small" style="margin-top:8px" onclick="S.tab='progress';render()">📈 Open the tracker</button>` : ""}`;
@@ -336,7 +361,7 @@ function startView(){
       <div><span class="n">3</span><b>🌟 Move up or down</b><p class="hint">80% over 5 texts unlocks a band check (70% to pass). Below 50% over 4 texts sends you an alert.</p></div>
       <div><span class="n">4</span><b>📈 Track progress</b><p class="hint">The tracker shows each child's starting point, their reading age now, and their band colour.</p></div></div></div>
     <div class="card"><div class="lbl">Get started: follow these steps</div>
-      ${step(0, "Join your school", s1)}${step(1, "Create your class", s2)}${step(2, "Add your children", s3)}${step(3, "Give the children their class code", s4)}${step(4, "Children take the reading test (their baseline)", s5)}${step(5, "Reading checks: twice a term", s6)}</div>`;
+      ${step(0, "Join your school", s1)}${step(1, "Create your class", s2)}${step(2, "Add your children", s3)}${step(3, "Give each child their reading card", s4)}${step(4, "Children take the reading test (their baseline)", s5)}${step(5, "Reading checks: twice a term", s6)}</div>`;
 }
 function classView(){
   const K = S.kids; if(!K.length) return `<div class="card empty">No children in ${esc(S.cls.name)} yet. Add them in the Children tab.</div>`;
@@ -482,10 +507,10 @@ async function saveDates(){
 }
 
 function childrenView(){
-  return `<div class="grid2"><div>${S.cls ? `<div class="card"><div class="lbl">${esc(S.cls.name)} · class code for children</div><div class="codebox"><b>${esc(S.cls.code)}</b></div>
-      <p class="hint" style="margin-top:10px">Children go to <b>nestory.thinknest.education/read.html</b>, type this code, tap their name and their secret picture. It's the same code and picture as WonderNest.</p>
-      <div style="margin-top:14px">${S.kids.map(k => `<span class="chip" style="margin:0 6px 6px 0;padding:5px 12px">${esc(k.picture)} ${esc(k.first_name)}</span>`).join("") || `<p class="hint">No children yet.</p>`}</div></div>
-    <div class="card"><div class="lbl">Add children to ${esc(S.cls.name)}</div><textarea id="nk" rows="5" placeholder="One first name per line"></textarea><button class="btn" style="margin-top:10px" onclick="addKids()">＋ Add children</button><p class="hint" style="margin-top:8px">Each child gets a secret picture. Show it to them before they sign in.</p></div>` : ""}</div>
+  return `<div class="grid2"><div>${S.cls ? `<div class="card"><div class="row between"><div class="lbl">${esc(S.cls.name)} · reading codes</div>${S.kids.length ? `<button class="btn small" onclick="printCards()">🖨️ Print all cards</button>` : ""}</div>
+      <p class="hint" style="margin:6px 0 12px">Each child has their own code and QR card. Children scan the QR code with the iPad camera, or type their code at <b>nestory.thinknest.education/read.html</b>. Keep the cards safe. If a card is lost, give that child a new code: the old one stops working.</p>
+      ${S.kids.length ? `<table class="codes">${S.kids.map(k => `<tr><td><b>${esc(k.picture)} ${esc(k.first_name)}</b></td><td class="mono">${esc(S.codes[k.id] || "…")}</td><td style="text-align:right;white-space:nowrap"><button class="link" onclick="printCards('${k.id}')">🖨️ Card</button> · <button class="link" onclick="newCode('${k.id}')">🔄 New code</button></td></tr>`).join("")}</table>` : `<p class="hint">No children yet.</p>`}</div>
+    <div class="card"><div class="lbl">Add children to ${esc(S.cls.name)}</div><textarea id="nk" rows="5" placeholder="One first name per line"></textarea><button class="btn" style="margin-top:10px" onclick="addKids()">＋ Add children</button><p class="hint" style="margin-top:8px">Each child gets their own reading code. Print their card afterwards.</p></div>` : ""}</div>
     <div><div class="card"><div class="lbl">Create a class</div><label>Class name</label><input id="cn" placeholder="For example Year 3 Blue"><label style="margin-top:10px">Year group</label><select id="cg">${GRADES.map(g => `<option>${g}</option>`).join("")}</select><button class="btn" style="margin-top:12px" onclick="addClass()">＋ Create class</button>
       <p class="hint" style="margin-top:10px">Classes you already have in WonderNest appear here automatically, with the same children.</p></div></div></div>`;
 }

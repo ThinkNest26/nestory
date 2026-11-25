@@ -314,7 +314,7 @@ const APP_READY = true;
 function openSoon(who){
   if(APP_READY){ location.href = who === "child" ? "read.html" : "app.html"; return false; }
   document.getElementById("soonT").textContent = who === "child" ? "Your books are on the way! 🐦" : "Nestory is hatching!";
-  document.getElementById("soonP").textContent = who === "child" ? "Soon you'll take a reading quest and find your book band. Ask your teacher for your class code when it opens." : "The reading test and texts are being written and checked. Sign-in opens soon, and it will use the same account as WonderNest.";
+  document.getElementById("soonP").textContent = who === "child" ? "Soon you'll take a reading quest and find your book band. Ask your teacher for your Nestory reading card." : "The reading test and texts are being written and checked. Sign-in opens soon, and it will use the same account as WonderNest.";
   document.getElementById("soon").classList.add("on"); return false;
 }
 </script>
