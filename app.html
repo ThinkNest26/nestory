@@ -11,6 +11,13 @@
 <script src="qr.js"></script>
 <style>
   .ggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}.gcard{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px}.gcard.mine{box-shadow:0 0 0 3px #8FC9A8}.gcard a.btn{text-decoration:none}
+  .homegrid{display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:start}.stat.click{text-align:left;cursor:pointer;display:flex;flex-direction:column;justify-content:flex-start;font:inherit}.stat.click:hover{border-color:var(--blue)}.stat .hint{display:block;font-size:12px}
+  .todo{display:flex;gap:12px;align-items:center;padding:12px 0;border-top:1px solid #EEF2F7}.todo:first-of-type{border-top:0}.todo .ic{font-size:26px}.todo .tx{flex:1}
+  .setupline{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid #EEF2F7;font-size:13px;font-weight:800}.setupline .ok{color:var(--gink);background:var(--green);padding:4px 10px;border-radius:20px}.setupline .todo2{color:var(--aink);background:var(--amber);padding:4px 10px;border-radius:20px}
+  .card.side{margin-bottom:12px}.wrow{display:grid;grid-template-columns:1fr auto 22px;gap:8px;padding:6px 0;border-top:1px solid #EEF2F7;font-size:14px}
+  @media (max-width:860px){ .homegrid{grid-template-columns:1fr} }
+  .wiz{max-width:720px}.wiz h2{margin-bottom:12px}.wizsteps{display:flex;gap:8px;align-items:center;font-weight:800;font-size:14px;color:var(--muted)}.wizsteps i{font-style:normal;opacity:.5}.wizsteps .now{color:var(--navy);background:var(--sky);padding:4px 12px;border-radius:20px}.wizsteps .ok{color:var(--gink)}
+  .wizkids{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}.wk{display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-radius:14px;padding:8px;background:#fff}.wk .mono{font-weight:800;letter-spacing:1px;color:var(--navy)}
   table.codes{width:100%;border-collapse:collapse}table.codes td{padding:8px 6px;border-top:1px solid var(--line)}table.codes .mono{font-weight:800;letter-spacing:1px;color:var(--navy)}
   :root{--navy:#44546F;--ink:#2E3A4F;--blue:#7FA8DA;--blue2:#5F8FCB;--sky:#E3EDF8;--sky2:#F5F9FD;--green:#E2F1E8;--gink:#2D6248;--amber:#FFF4DE;--aink:#8A5A12;--rose:#FBEDE7;--rink:#9A4022;--muted:#6B7689;--line:#DCE6F2}
   *{box-sizing:border-box;margin:0;padding:0}
@@ -22,7 +29,8 @@
   .top .in{max-width:1180px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:16px}
   .brand{display:flex;align-items:center;gap:8px;font-family:"Fredoka";font-size:24px;color:var(--navy);font-weight:600;text-decoration:none}
   .brand img{height:40px}
-  .tabs{display:flex;gap:4px;margin-left:12px;flex-wrap:wrap}
+  .tabs{display:flex;gap:4px;flex-wrap:wrap}
+  .top .in.tabrow{padding-top:0;padding-bottom:8px}
   .tabs button{padding:8px 10px;border-radius:12px;font-weight:800;color:var(--muted);font-size:14px;white-space:nowrap}
   .tabs button.on{background:var(--sky);color:var(--navy)}
   .tabs .n{background:var(--blue2);color:#fff;border-radius:999px;padding:1px 7px;font-size:12px;margin-left:4px}
@@ -265,16 +273,42 @@ async function addClass(){
   if(error){ S.error = errMsg(error); return render(); }
   toast("Class created ✓"); S.classes.push(data); if(S.tab !== "start") S.tab = "children"; openClass(data.id);
 }
-async function addKids(){
-  const names = $("#nk").value.split(/\n|,/).map(n => n.trim()).filter(Boolean).slice(0, 60); if(!names.length) return;
+async function addKids(fromWiz){
+  const box = $(fromWiz ? "#wnk" : "#nk"); const names = (box ? box.value : "").split(/\n|,/).map(n => n.trim()).filter(Boolean).slice(0, 60);
+  if(!names.length){ toast("Type at least one name"); return; }
   const used = S.kids.map(k => k.picture);
   const rows = names.map(n => { const free = PICTURES.filter(p => !used.includes(p)), pool = free.length ? free : PICTURES, pic = pool[Math.floor(Math.random() * pool.length)]; used.push(pic); return { class_id: S.cls.id, first_name: n.slice(0, 40), picture: pic }; });
-  const { error } = await db.from("students").insert(rows); if(error){ S.error = errMsg(error); return render(); }
-  toast(`${rows.length} added ✓`); openClass(S.cls.id);
+  const { data, error } = await db.from("students").insert(rows).select("id"); if(error){ S.error = errMsg(error); return render(); }
+  toast(`${rows.length} added ✓`); S.wiz = { step: 3, only: (data || []).map(x => x.id) }; await openClass(S.cls.id);
+}
+/* ---------- new class wizard: class → children → codes ---------- */
+function newClass(){ S.wiz = { step: 1 }; render(); setTimeout(() => $("#wcn") && $("#wcn").focus(), 50); }
+function addChildren(){ if(!S.cls) return newClass(); S.wiz = { step: 2 }; render(); setTimeout(() => $("#wnk") && $("#wnk").focus(), 50); }
+async function wizCreate(){
+  const name = $("#wcn").value.trim(), grade = $("#wcg").value; if(!name){ toast("Type a class name"); return; }
+  const { data, error } = await db.from("classes").insert({ name, grade }).select("id, name, grade, code").single();
+  if(error){ S.error = errMsg(error); S.wiz = null; return render(); }
+  S.classes.push(data); S.wiz = { step: 2 }; await openClass(data.id); setTimeout(() => $("#wnk") && $("#wnk").focus(), 50);
+}
+function wizView(){
+  const W = S.wiz, dots = ["Class", "Children", "Codes"].map((n, i) => `<span class="${i + 1 < W.step ? "ok" : i + 1 === W.step ? "now" : ""}">${i + 1 < W.step ? "✓" : i + 1} ${n}</span>`).join("<i>→</i>");
+  let body = "";
+  if(W.step === 1) body = `<h2>Create your class</h2><label>Class name</label><input id="wcn" placeholder="For example Grade 1 CCH" onkeydown="if(event.key==='Enter')wizCreate()">
+    <label style="margin-top:10px">Year group</label><select id="wcg">${GRADES.map(g => `<option>${g}</option>`).join("")}</select>
+    <div class="row" style="margin-top:16px"><button class="btn" onclick="wizCreate()">Next: add children ➜</button></div>
+    <p class="hint" style="margin-top:10px">Classes you already have in WonderNest are already here, with the same children. Choose them from the class menu at the top.</p>`;
+  if(W.step === 2) body = `<h2>Add the children in ${esc(S.cls.name)}</h2><label>Type one first name per line</label><textarea id="wnk" rows="8" placeholder="Layla&#10;Omar&#10;Sara"></textarea>
+    <p class="hint" style="margin-top:6px">You can paste a list from Excel or Word. Each child gets their own reading code straight away.</p>
+    <div class="row" style="margin-top:14px"><button class="btn" onclick="addKids(true)">Next: get their codes ➜</button></div>`;
+  if(W.step === 3){ const K = S.kids.filter(k => !W.only || W.only.includes(k.id)), url = readUrl();
+    body = `<h2>🎉 ${K.length} ${K.length === 1 ? "child is" : "children are"} ready</h2><p class="hint" style="margin-bottom:12px">Each child has their own reading code. Print the cards and give one to each child. On an iPad, they point the camera at their QR code and they're in.</p>
+    <div class="wizkids">${K.map(k => `<div class="wk">${S.codes[k.id] ? qrSVG(url + "#k=" + S.codes[k.id], 74) : ""}<div><b>${esc(k.first_name)}</b><br><span class="mono">${esc(S.codes[k.id] || "…")}</span></div></div>`).join("")}</div>
+    <div class="row" style="margin-top:16px"><button class="btn" onclick="printCards(S.wiz.only)">🖨️ Print ${K.length === 1 ? "the card" : "these " + K.length + " cards"}</button><button class="btn soft" onclick="S.wiz=null;S.tab='start';render()">Done</button></div>`; }
+  return `<div class="modal" onclick="if(event.target===this){S.wiz=null;render()}"><div class="box wiz"><div class="row between" style="margin-bottom:14px"><div class="wizsteps">${dots}</div><button class="link" onclick="S.wiz=null;render()">✕ Close</button></div><div class="card">${body}</div></div></div>`;
 }
 function readUrl(){ return location.origin + location.pathname.replace(/app\.html$/, "") + "read.html"; }
 function printCards(only){
-  const url = readUrl(), kids = S.kids.filter(k => S.codes[k.id] && (!only || k.id === only));
+  const url = readUrl(), kids = S.kids.filter(k => S.codes[k.id] && (!only || (Array.isArray(only) ? only.includes(k.id) : k.id === only)));
   if(!kids.length) return toast("No codes yet. Please refresh the page.");
   const w = window.open("", "_blank"); if(!w) return toast("Please allow pop-ups to print the cards");
   w.document.write(`<!DOCTYPE html><html><head><title>Nestory reading cards · ${esc(S.cls.name)}</title><style>body{font-family:Arial,sans-serif;margin:16px;color:#2E3A4F}.g{display:grid;grid-template-columns:1fr 1fr;gap:12px}.c{border:2px dashed #9FB3CC;border-radius:14px;padding:14px;break-inside:avoid;display:flex;gap:14px;align-items:center}.c svg{flex:none}.c b{font-size:22px}.k{font-size:22px;letter-spacing:2px;font-weight:bold;color:#44546F;background:#E3EDF8;border-radius:8px;padding:4px 10px;display:inline-block;margin:6px 0}small{color:#6B7689;line-height:1.5}@media print{button{display:none}}</style></head><body>
@@ -309,12 +343,11 @@ function render(){
   if(!S.user) return app.innerHTML = loginView();
   if(S.mode === "newpass") return app.innerHTML = `<div class="login"><img src="logo.png" alt="Nestory"><div class="card"><h2>Choose a new password</h2>${S.error ? `<div class="err">${esc(S.error)}</div>` : ""}<label>New password</label><input type="password" id="np"><button class="btn" style="margin-top:12px;width:100%;justify-content:center" onclick="newPass()">Save password</button></div></div>`;
   const alerts = S.kids.filter(k => ["down", "ready", "test", "slow"].includes(statusOf(k.id)[0])).length;
-  app.innerHTML = `<div class="top"><div class="in"><a class="brand" href="index.html"><img src="bird.png" alt="">Nestory</a>
-    <div class="tabs">${[["start", "🏠 Start here"], ...(S.schoolRole === "admin" ? [["school", "🏫 Whole school"]] : []), ["class", "📋 My class"], ["alerts", `🔔 Alerts${alerts ? `<span class="n">${alerts}</span>` : ""}`], ["progress", "📈 Tracker"], ["children", "🧒 Children"], ["guides", "📚 Guides"]].map(([k, l]) => `<button class="${S.tab === k ? "on" : ""}" onclick="S.tab='${k}';S.kid=null;render()">${l}</button>`).join("")}</div>
-    <span class="sp"></span>${S.classes && S.classes.length && S.tab !== "school" ? `<select style="width:auto" onchange="openClass(this.value)">${S.classes.map(c => `<option value="${c.id}" ${S.cls && S.cls.id === c.id ? "selected" : ""}>${esc(c.name)} · ${esc(c.grade)}</option>`).join("")}</select>` : ""}
-    <button class="link hide-sm" onclick="signOut()">Sign out</button></div></div>
+  app.innerHTML = `<div class="top"><div class="in"><a class="brand" href="index.html"><img src="bird.png" alt="">Nestory</a><span class="sp"></span>${S.classes && S.classes.length && S.tab !== "school" ? `<select style="width:auto" onchange="openClass(this.value)">${S.classes.map(c => `<option value="${c.id}" ${S.cls && S.cls.id === c.id ? "selected" : ""}>${esc(c.name)} · ${esc(c.grade)}</option>`).join("")}</select>` : ""}
+    <button class="link" onclick="signOut()">Sign out</button></div>
+    <div class="in tabrow"><div class="tabs">${[["start", "🏠 Home"], ...(S.schoolRole === "admin" ? [["school", "🏫 Whole school"]] : []), ["class", "📋 My class"], ["alerts", `🔔 Alerts${alerts ? `<span class="n">${alerts}</span>` : ""}`], ["progress", "📈 Tracker"], ["children", "🧒 Children"], ["guides", "📚 Guides"]].map(([k, l]) => `<button class="${S.tab === k ? "on" : ""}" onclick="S.tab='${k}';S.kid=null;render()">${l}</button>`).join("")}</div></div></div>
     <div class="main">${S.error ? `<div class="err">⚠️ ${esc(S.error)} <button class="link" onclick="S.error='';render()">OK</button></div>` : ""}${!S.classes ? `<div class="card empty">Loading…</div>` : !S.cls && !["children", "start", "school", "guides"].includes(S.tab) ? `<div class="card empty">🐣<br><br>Start with the 🏠 Start here tab to set up your class.</div>` : ({ start: startView, school: schoolView, class: classView, alerts: alertsView, progress: progressView, children: childrenView, guides: guidesView })[S.tab]()}</div>
-    ${S.kid ? kidModal() : ""}`;
+    ${S.kid ? kidModal() : ""}${S.wiz ? wizView() : ""}`;
 }
 function guidesView(){
   const yrs = m => `${Math.floor(m / 12)}y${m % 12 ? " " + (m % 12) + "m" : ""}`;
@@ -335,6 +368,37 @@ function loginView(){
     <p class="hint" style="text-align:center">Children sign in at <a class="link" href="read.html">the readers' page</a> with their own reading code or QR card.</p></div>`;
 }
 function startView(){
+  const ready = !!S.school && !!S.cls && S.kids.length > 0;
+  if(!ready || S.setup) return setupView();
+  const K = S.kids, untested = K.filter(k => !testsOf(k.id).length), tested = K.length - untested.length;
+  const alerts = K.filter(k => ["down", "ready", "test", "slow"].includes(statusOf(k.id)[0])).length, moves = K.filter(k => ["down", "ready", "slow"].includes(statusOf(k.id)[0])).length;
+  const wsY = yearWindows(S.windows, pickYear(S.windows)), today = todayISO();
+  const openW = wsY.find(w => w.opens <= today && today <= w.closes), nextW = wsY.find(w => w.opens > today);
+  const stat = (label, val, sub, tab) => `<button class="stat click" onclick="S.tab='${tab}';render()"><small>${label}</small><b>${val}</b>${sub ? `<span class="hint">${sub}</span>` : ""}</button>`;
+  const todo = [];
+  if(untested.length) todo.push(["🗺️", `<b>${untested.length} ${untested.length === 1 ? "child hasn't" : "children haven't"}</b> taken the reading test yet`, untested.slice(0, 6).map(k => esc(k.first_name)).join(", ") + (untested.length > 6 ? "…" : ""), `<button class="btn small" onclick="S.tab='class';render()">See who</button>`]);
+  if(moves) todo.push(["🔔", `<b>${moves} ${moves === 1 ? "child needs" : "children need"}</b> your attention`, "Moving up, moving down or a slower start", `<button class="btn small" onclick="S.tab='alerts';render()">Open alerts</button>`]);
+  if(openW) todo.push(["📝", `<b>${esc(openW.title)}</b> is open now`, `Until ${fmtDate(openW.closes)}. Children see it on their home page.`, `<button class="btn small soft" onclick="S.tab='progress';render()">See results</button>`]);
+  else if(nextW) todo.push(["📅", `<b>${esc(nextW.title)}</b> opens on ${fmtDate(nextW.opens)}`, "Children will see it on their home page.", ""]);
+  const steps = [["School", !!S.school], ["Class", !!S.cls], ["Children", K.length > 0], ["Cards", K.length > 0], [`Reading test ${tested}/${K.length}`, tested === K.length]];
+  return `<div class="row between" style="margin-bottom:14px"><div><h1>${esc(S.cls.name)}</h1><p class="hint">${esc(S.cls.grade)} · ${esc(S.school.name)}</p></div><div class="row"><button class="btn small soft" onclick="addChildren()">＋ Add children</button><button class="btn small soft" onclick="newClass()">＋ New class</button><button class="link" onclick="S.how=!S.how;render()">${S.how ? "Hide" : "❓ How it works"}</button></div></div>
+    ${S.how ? howCard() : ""}
+    <div class="stats">${stat("Children", K.length, "", "children")}${stat("Tested", `${tested}/${K.length}`, tested === K.length ? "all done ✓" : "", "class")}${stat("Alerts", alerts, alerts ? "to review" : "none", "alerts")}${stat("Next check", nextW ? fmtDate(nextW.opens) : openW ? "Open now" : "–", nextW ? esc(nextW.title) : openW ? esc(openW.title) : "", "progress")}</div>
+    <div class="homegrid"><div class="card"><div class="lbl">To do now</div>
+      ${todo.length ? todo.map(([ic, t, sub, btn]) => `<div class="todo"><span class="ic">${ic}</span><div class="tx">${t}<br><span class="hint">${sub}</span></div>${btn}</div>`).join("") : `<p style="padding:10px 0">🎉 Nothing urgent. Your class is all set.</p>`}
+      <div class="setupline">${steps.map(([n, ok]) => `<span class="${ok ? "ok" : "todo2"}">${ok ? "✓" : "●"} ${n}</span>`).join("")}<button class="link" onclick="S.setup=true;render()">Setup steps</button></div></div>
+    <div><div class="card side"><div class="lbl">Reading cards</div><p class="hint">Each child has their own code and QR card.</p><button class="btn small" style="margin-top:8px" onclick="printCards()">🖨️ Print all cards</button> <button class="link" onclick="S.tab='children';render()">See codes</button></div>
+      <div class="card side"><div class="lbl">Reading checks ${esc(pickYear(S.windows) || "")}</div>${wsY.length ? wsY.map(w => `<div class="wrow"><span>${esc(w.title)}</span><span class="hint">${fmtDate(w.opens)}</span><span>${today > w.closes ? "✓" : w === openW ? "🟢" : ""}</span></div>`).join("") : `<p class="hint">Your school leader sets the dates.</p>`}</div>
+      <div class="card side"><div class="lbl">School code for teachers</div><b class="mono" style="font-size:22px;letter-spacing:2px">${esc(S.school.code || "")}</b><p class="hint">Share it with teachers at your school. Children don't need it.</p></div></div></div>`;
+}
+function howCard(){
+  return `<div class="card"><div class="how">
+      <div><span class="n">1</span><b>🗺️ Reading test</b><p class="hint">Each child takes a reading test. It gives their reading age and colour band. This is their starting point.</p></div>
+      <div><span class="n">2</span><b>📚 Read at their band</b><p class="hint">Children read texts at their band, answer questions and practise grammar.</p></div>
+      <div><span class="n">3</span><b>🌟 Move up or down</b><p class="hint">80% over 5 texts unlocks a band check (70% to pass). Below 50% over 4 texts sends you an alert.</p></div>
+      <div><span class="n">4</span><b>📈 Track progress</b><p class="hint">The tracker shows each child's starting point, their reading age now, and their band colour.</p></div></div></div>`;
+}
+function setupView(){
   const hasClass = !!S.cls, kids = hasClass ? S.kids : [], tested = kids.filter(k => testsOf(k.id).length).length;
   const done = [!!S.school, hasClass, kids.length > 0, hasClass && kids.length > 0 && tested > 0, kids.length > 0 && tested === kids.length];
   const step = (i, title, body) => `<div class="step ${done[i] ? "done" : ""}"><div class="tick">${done[i] ? "✓" : i + 1}</div><div class="bd"><h3>${title}</h3>${body}</div></div>`;
@@ -342,10 +406,8 @@ function startView(){
     : `<p class="hint" style="margin-bottom:10px">Your school code connects you to your school, so leaders can see reading across the school. Ask your coordinator for it. It's the same code as WonderNest.</p>
       <div class="grid2"><div><label>School code (8 characters)</label><div class="row"><input id="sc" placeholder="ABCD1234" style="flex:1;text-transform:uppercase;letter-spacing:2px"><button class="btn" onclick="joinSchool()">Join</button></div></div>
       <div><label>Nobody at my school uses ThinkNest yet</label><div class="row"><input id="sn" placeholder="School name" style="flex:1"><button class="btn soft" onclick="createSchool()">Create</button></div></div></div>`;
-  const s2 = hasClass ? `<p>Your class: <b>${esc(S.cls.name)}</b> · ${esc(S.cls.grade)}. <button class="link" onclick="S.tab='children';render()">Add another class</button></p>`
-    : `<div class="row"><div style="flex:2;min-width:180px"><label>Class name</label><input id="cn" placeholder="For example Year 3 Blue"></div><div style="flex:1;min-width:120px"><label>Year group</label><select id="cg">${GRADES.map(g => `<option>${g}</option>`).join("")}</select></div><button class="btn" style="align-self:flex-end" onclick="addClass()">＋ Create class</button></div><p class="hint" style="margin-top:6px">Classes you already have in WonderNest appear here automatically, with the same children.</p>`;
-  const s3 = !hasClass ? `<p class="hint">Create your class first.</p>` : kids.length ? `<p><b>${kids.length}</b> children in ${esc(S.cls.name)}. <button class="link" onclick="S.tab='children';render()">Add more</button></p>`
-    : `<label>Type one first name per line</label><textarea id="nk" rows="4" placeholder="Layla&#10;Omar&#10;Sara"></textarea><button class="btn" style="margin-top:8px" onclick="addKids()">＋ Add children</button><p class="hint" style="margin-top:6px">Each child gets their own reading code and QR card.</p>`;
+  const s2 = hasClass ? `<p>Your class: <b>${esc(S.cls.name)}</b> · ${esc(S.cls.grade)}. <button class="link" onclick="newClass()">Add another class</button></p>` : `<button class="btn" onclick="newClass()">＋ Create my class</button><p class="hint" style="margin-top:6px">Classes you already have in WonderNest appear here automatically, with the same children.</p>`;
+  const s3 = !hasClass ? `<p class="hint">Create your class first.</p>` : kids.length ? `<p><b>${kids.length}</b> children in ${esc(S.cls.name)}. <button class="link" onclick="addChildren()">Add more</button></p>` : `<button class="btn" onclick="addChildren()">＋ Add my children</button><p class="hint" style="margin-top:6px">Type their first names. Each child gets their own reading code straight away.</p>`;
   const s4 = !kids.length ? `<p class="hint">Add your children first.</p>` : `<p class="hint">Every child has their own reading code, such as <b>TIGER-4782</b>, and a card with a QR code. On an iPad, they point the camera at their QR code and they are signed straight in. They can also type their code at <b>nestory.thinknest.education/read.html</b>. Nobody can sign in as somebody else without their card.</p><button class="btn soft small" style="margin-top:8px" onclick="printCards()">🖨️ Print a card for each child</button> <button class="link" onclick="S.tab='children';render()">See all codes</button>`;
   const s5 = !kids.length ? `<p class="hint">Children see the reading test as soon as they sign in for the first time.</p>` : `<p><b>${tested} of ${kids.length}</b> children have taken the test.${tested ? " Their starting points are saved in the tracker." : ""}</p>
       <div class="prog-sm" style="height:10px;background:#EEF2F7;border-radius:8px;overflow:hidden;margin:8px 0"><i style="display:block;height:100%;width:${kids.length ? tested / kids.length * 100 : 0}%;background:#8FC9A8"></i></div>
@@ -360,7 +422,7 @@ function startView(){
       <div><span class="n">2</span><b>📚 Read at their band</b><p class="hint">Children read texts at their band, answer questions and practise grammar.</p></div>
       <div><span class="n">3</span><b>🌟 Move up or down</b><p class="hint">80% over 5 texts unlocks a band check (70% to pass). Below 50% over 4 texts sends you an alert.</p></div>
       <div><span class="n">4</span><b>📈 Track progress</b><p class="hint">The tracker shows each child's starting point, their reading age now, and their band colour.</p></div></div></div>
-    <div class="card"><div class="lbl">Get started: follow these steps</div>
+    <div class="card"><div class="row between"><div class="lbl">Get started: follow these steps</div>${S.setup ? `<button class="link" onclick="S.setup=false;render()">← Back to home</button>` : ""}</div>
       ${step(0, "Join your school", s1)}${step(1, "Create your class", s2)}${step(2, "Add your children", s3)}${step(3, "Give each child their reading card", s4)}${step(4, "Children take the reading test (their baseline)", s5)}${step(5, "Reading checks: twice a term", s6)}</div>`;
 }
 function classView(){
@@ -511,8 +573,8 @@ function childrenView(){
       <p class="hint" style="margin:6px 0 12px">Each child has their own code and QR card. Children scan the QR code with the iPad camera, or type their code at <b>nestory.thinknest.education/read.html</b>. Keep the cards safe. If a card is lost, give that child a new code: the old one stops working.</p>
       ${S.kids.length ? `<table class="codes">${S.kids.map(k => `<tr><td><b>${esc(k.picture)} ${esc(k.first_name)}</b></td><td class="mono">${esc(S.codes[k.id] || "…")}</td><td style="text-align:right;white-space:nowrap"><button class="link" onclick="printCards('${k.id}')">🖨️ Card</button> · <button class="link" onclick="newCode('${k.id}')">🔄 New code</button></td></tr>`).join("")}</table>` : `<p class="hint">No children yet.</p>`}</div>
     <div class="card"><div class="lbl">Add children to ${esc(S.cls.name)}</div><textarea id="nk" rows="5" placeholder="One first name per line"></textarea><button class="btn" style="margin-top:10px" onclick="addKids()">＋ Add children</button><p class="hint" style="margin-top:8px">Each child gets their own reading code. Print their card afterwards.</p></div>` : ""}</div>
-    <div><div class="card"><div class="lbl">Create a class</div><label>Class name</label><input id="cn" placeholder="For example Year 3 Blue"><label style="margin-top:10px">Year group</label><select id="cg">${GRADES.map(g => `<option>${g}</option>`).join("")}</select><button class="btn" style="margin-top:12px" onclick="addClass()">＋ Create class</button>
-      <p class="hint" style="margin-top:10px">Classes you already have in WonderNest appear here automatically, with the same children.</p></div></div></div>`;
+    <div><div class="card"><div class="lbl">Create a class</div><p class="hint" style="margin-bottom:10px">Name your class, add the children, and get their codes in three quick steps.</p><button class="btn" onclick="newClass()">＋ New class</button>
+      <p class="hint" style="margin-top:10px">Classes you already have in WonderNest appear here automatically, with the same children.</div></div></div>`;
 }
 /* ---------- whole-school view (school admins) ---------- */
 async function loadSchoolOverview(){
