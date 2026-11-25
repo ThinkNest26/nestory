@@ -168,11 +168,11 @@ function homeView(){
   return `<div class="head"><img src="bird.png" alt=""><div><div class="hi">Hello,</div><h1>${esc(me.first_name)}'s reading nest</h1></div><button class="back" onclick="bye()">👋 Bye</button></div><div class="body">
     ${myWin && myWin.kind === "band" && b ? `<div class="card center" style="background:#FFF4DE"><div style="font-size:54px">📝</div><h2 class="big">It's reading check time!</h2><p class="sub">${esc(myWin.title || "Your reading check")} is open. Read a new text and answer the questions.</p><button class="btn green" onclick="startAssess()">Start my reading check ➜</button></div>` : ""}
     ${(needTest || ageWin()) ? `<div class="card center"><div style="font-size:54px">🗺️</div><h2 class="big">${ageWin() ? esc(ageWin().title || "Reading quest time!") : b ? "Time for a new reading quest!" : "Your reading quest"}</h2><p class="sub">Read some sentences and short stories. Nestory will find the books that are just right for you. Take your time; there's no rush.</p><button class="btn green" onclick="EX={a:null,b:null};go('intro');speak(INTRO_SAY)">Start my reading quest ➜</button></div>` : ""}
-    ${b ? `<div class="card"><div class="bandcard"><div class="dot" style="background:${bandColour(b)}"></div><div><small>I'm ${aBand(b)}</small><b>${bandName(b)} reader</b><small>${reads.length} ${reads.length === 1 ? "book" : "books"} read</small></div></div>${bandPath(b)}</div>` : ""}
+    ${b ? `<div class="card"><div class="bandcard"><div class="dot" style="background:${bandColour(b)}"></div><div><small>I'm ${aBand(b)}</small><b>${bandName(b)} reader</b><small>${reads.length} ${reads.length === 1 ? "reading" : "readings"} done</small></div></div>${bandPath(b)}</div>` : ""}
+    ${b && !needTest ? journeyCard() : ""}
     ${b === 20 && !needTest ? `<div class="card center" style="background:#F3F6FA"><div style="font-size:40px">💎</div><h2 class="big">You've reached the top band!</h2><p class="sub">Diamond is the highest band in Nestory. Every book here is a challenge worth taking.</p></div>` : ""}
     ${b && !needTest ? nextStepCard() : ""}
     ${b && ns.ready_check ? `<div class="card center" style="background:var(--green)"><div style="font-size:44px">🌟</div><h2 class="big">You're ready for a band check!</h2><p class="sub" style="color:var(--gink)">Answer some questions from ${bandName(b + 1)} band. If you do well, you'll move up!</p><button class="btn green" onclick="startCheck()">Start my band check</button></div>` : ""}
-    ${b && !needTest ? `<div class="card"><h2 style="margin-bottom:12px">📚 My bookshelf</h2>${here.length ? `<div class="shelf">${here.map(t => `<button class="book" style="background:${bandColour(b)}" onclick="openText('${t.id}')">${doneIds.includes(t.id) ? `<span class="tick">✓ read</span>` : ""}<small>${esc(t.type)}</small><b>${esc(t.title)}</b><small>Tap to read</small></button>`).join("")}</div>` : `<p class="sub">New ${bandName(b)} books are being written for you. Ask your teacher what to read today!</p>`}</div>` : ""}
   </div>`;
 }
 
@@ -398,6 +398,27 @@ function testView(){
 
 /* ---------- reading a text ---------- */
 let RD = null, R = null;
+/* ---------- the reading journey: texts come in order; the child does not choose ---------- */
+function bandTexts(b){ return TEXTS.filter(t => t.band === b); }
+function journeyState(){
+  const b = ns.band, list = bandTexts(b), inBand = reads.filter(r => r.band === b), readIds = new Set(inBand.map(r => r.text_id));
+  const next = list.find(t => !readIds.has(t.id));
+  if(next) return { list, done: list.filter(t => readIds.has(t.id)).length, next, review: false };
+  if(!list.length) return { list, done: 0, next: null, review: false };
+  const last = {}; inBand.forEach(r => last[r.text_id] = r.score);                 // latest score for each text
+  const recent = inBand.slice(-1)[0], pool = list.filter(t => !recent || t.id !== recent.text_id).sort((a, c) => (last[a.id] ?? 0) - (last[c.id] ?? 0));
+  return { list, done: list.length, next: pool[0] || list[0], review: true };
+}
+function journeyCard(){
+  const J = journeyState(), b = ns.band, started = reads.some(r => r.band === b);
+  if(!J.next) return `<div class="card center"><p class="sub">New ${bandName(b)} readings are being written for you. Ask your teacher what to read today!</p></div>`;
+  const n = J.review ? null : J.done + 1;
+  return `<div class="card center" style="background:${bandColour(b)}"><div style="font-size:56px">${started ? "📖" : "🚀"}</div>
+    <h2 class="big">${started ? "Continue my reading journey" : "Start your reading journey"}</h2>
+    <p class="sub" style="color:var(--navy)">${J.review ? `You've read all ${J.list.length} ${bandName(b)} readings! Now let's practise the ones you found tricky.` : `Reading ${n} of ${J.list.length} in ${bandName(b)} band`}</p>
+    <div class="prog" style="background:rgba(255,255,255,.6)"><i style="width:${Math.min(100, J.done / J.list.length * 100)}%;background:var(--navy)"></i></div>
+    <button class="btn green" onclick="openText('${J.next.id}')">${started ? "Continue reading ➜" : "Start reading ➜"}</button></div>`;
+}
 function openText(id){ const t = TEXTS.find(x => x.id === id); RD = { t, step: "read", qi: 0, gi: 0, comp: 0, gram: 0, answers: [], start: Date.now(), picked: null }; go("read"); }
 function marked(p, t, showSpots){
   let h = esc(p);
@@ -479,22 +500,24 @@ async function pickC(i){
 function resultView(){
   if(R.kind === "assess") { speak("Check complete. Well done!");
     return head("Check complete!", "Well done") + `<div class="body"><div class="card center"><div class="confetti">✅</div><h2 class="big">Thank you, ${esc(me.first_name)}!</h2><p class="sub">Your teacher will look at your answers to plan your next steps.</p>
-      <button class="btn green" onclick="go('home')">Back to my bookshelf ➜</button></div>${nextStepCard()}</div>`; }
+      <button class="btn green" onclick="go('home')">Back home ➜</button></div>${nextStepCard()}</div>`; }
   if(R.kind === "test") { speak(`Well done! You are ${aBand(R.band)} ${bandName(R.band)} reader.`);
     return head("Quest complete!", "Well done") + `<div class="body"><div class="card center"><div class="confetti">🎉</div><h2 class="big">You're ${aBand(R.band)} ${bandName(R.band)} reader!</h2>
       <div class="bandcard" style="justify-content:center;margin:16px 0"><div class="dot" style="background:${bandColour(R.band)}"></div></div>
-      <p class="sub">${R.early ? "Your bookshelf is ready! Read your books with an adult." : "Your bookshelf is ready with books that are just right for you."}</p>${bandPath(R.band)}
-      <button class="btn green" style="margin-top:18px" onclick="go('home')">See my bookshelf ➜</button></div></div>`; }
+      <p class="sub">${R.early ? "Your reading journey is ready! Read with an adult." : "Your reading journey is ready, with texts that are just right for you."}</p>${bandPath(R.band)}
+      <button class="btn green" style="margin-top:18px" onclick="go('home')">Start my reading journey ➜</button></div></div>`; }
   if(R.kind === "check") { speak(R.up ? `Amazing! You moved up to ${bandName(ns.band)} band!` : "Great try! Keep reading and you'll get there.");
     return head(R.up ? "You moved up!" : "Great try!", "Band check") + `<div class="body"><div class="card center"><div class="confetti">${R.up ? "🌟" : "💪"}</div>
       <h2 class="big">${R.up ? `Welcome to ${bandName(ns.band)} band!` : "Keep reading, you're getting closer!"}</h2><p class="sub">${R.up ? "You have new books on your bookshelf." : "Read a few more books and you can try again."}</p>${bandPath(ns.band)}
-      <button class="btn green" style="margin-top:18px" onclick="go('home')">Back to my bookshelf ➜</button></div></div>`; }
+      <button class="btn green" style="margin-top:18px" onclick="go('home')">${R.up ? "Start my new reading journey ➜" : "Back to my reading journey ➜"}</button></div></div>`; }
   const msg = R.score >= 80 ? "Brilliant reading!" : R.score >= 50 ? "Good reading!" : "You kept going. Well done!";
   speak(msg);
   return head("Book finished!", esc(RD.t.title)) + `<div class="body"><div class="card center"><div class="confetti">📗</div><h2 class="big">${msg}</h2>
     <div class="row" style="justify-content:center;gap:26px;margin:14px 0"><div><div class="score">${R.comp}%</div><p class="sub">Understanding</p></div><div><div class="score">${R.gram}%</div><p class="sub">Grammar</p></div></div>
-    ${R.ready ? `<p class="sub" style="color:var(--gink)">🌟 You're ready for a band check! Find it on your home page.</p>` : ""}
-    <button class="btn green" onclick="go('home')">Back to my bookshelf ➜</button></div></div>`;
+    ${R.ready ? `<div class="card" style="background:var(--green);margin:14px 0 10px"><p style="font-weight:900;color:var(--gink);margin-bottom:10px">🌟 You're ready for a band check! If you do well, you'll move up a band.</p>
+      <button class="btn green" onclick="startCheck()">Take my band check now ➜</button></div><button class="btn ghost" onclick="go('home')">Not now</button>`
+      : (() => { const J = journeyState(); return J.next ? `<h2 style="margin:16px 0 10px">Would you like to read the next one?</h2><button class="btn green" onclick="openText('${J.next.id}')">Yes, next reading ➜</button>
+      <button class="btn ghost" style="margin-top:10px" onclick="go('home')">Stop for today</button>` : `<button class="btn green" onclick="go('home')">Back home ➜</button>`; })()}</div></div>`;
 }
 start();
 </script>
