@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@600;700;800;900&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="content.js"></script>
+<script src="grammar.js"></script>
 <style>
   :root{--navy:#44546F;--ink:#2E3A4F;--blue:#7FA8DA;--blue2:#5F8FCB;--sky:#E3EDF8;--sky2:#F5F9FD;--green:#E2F1E8;--green2:#8FC9A8;--gink:#2D6248;--muted:#6B7689;--line:#DCE6F2}
   *{box-sizing:border-box;margin:0;padding:0}
@@ -68,6 +69,9 @@
   .gram b{color:var(--gink)}
   .score{font-family:"Fredoka";font-size:54px;color:var(--navy);text-align:center}
   .center{text-align:center}
+  .grow{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:14px 4px;border-top:1px solid var(--line);background:none}.grow:first-child{border-top:0}.grow .gt{flex:1}.grow .gt b{display:block;font-size:17px;color:var(--ink)}.grow small{color:var(--muted);font-weight:800}.grow small.due{color:#6A4BA3}
+  .gb{font-weight:900;font-size:14px;padding:5px 10px;border-radius:20px;white-space:nowrap}.gb.ok{background:var(--green);color:var(--gink)}.gb.mid{background:#FFF4DE;color:#8A5A12}.gb.low{background:#FBEDE7;color:#9A4022}.gb.none{background:#EEF2F7;color:var(--muted)}
+  .link{background:none;color:#5F8FCB;font-weight:900;font-size:16px}
   .speak{background:var(--sky);border-radius:50%;width:42px;height:42px;font-size:20px;flex-shrink:0}
   .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
   .toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 18px;border-radius:999px;font-weight:800;opacity:0;transition:.3s;z-index:40;pointer-events:none}
@@ -141,8 +145,10 @@ async function codeLogin(code){
 }
 window.addEventListener("hashchange", () => { const k = new URLSearchParams(location.hash.slice(1)).get("k"); if(k){ history.replaceState(null, "", location.pathname); codeLogin(k); } });
 async function loadMe(){
-  const [a, b, c, w] = await Promise.all([db.rpc("ns_me"), db.from("ns_reads").select("text_id, band, score, comp, grammar, seconds, answers, created_at").eq("student_id", me.student_id).order("created_at"),
-    db.from("ns_tests").select("kind, band, reading_age, skills, created_at").eq("student_id", me.student_id).order("created_at"), db.rpc("ns_my_window")]);
+  const [a, b, c, w, gr, gs] = await Promise.all([db.rpc("ns_me"), db.from("ns_reads").select("text_id, band, score, comp, grammar, seconds, answers, created_at").eq("student_id", me.student_id).order("created_at"),
+    db.from("ns_tests").select("kind, band, reading_age, skills, created_at").eq("student_id", me.student_id).order("created_at"), db.rpc("ns_my_window"), db.from("ns_grammar").select("topic, score, correct, total, created_at").eq("student_id", me.student_id).order("created_at"),
+    db.from("ns_grammar_set").select("topic, set_at").eq("class_id", me.class_id)]);
+  gRes = (gr && gr.data) || []; gSet = ((gs && gs.data) || []).filter(x => GQ_BY_ID[x.topic]);
   ns = a.data || { band: 0, retest: true }; reads = b.data || []; myTests = c.data || []; testsTaken = myTests.filter(t => t.kind === "test").length; myWin = w && !w.error ? w.data || null : null;
 }
 async function bye(){ if(!confirm("Leave Nestory?")) return; await db.rpc("student_logout"); me = null; ns = null; go("code"); }
@@ -154,7 +160,7 @@ const SCREENS = {
     <div class="card"><h2 class="big">What's your reading code?</h2><p class="sub">It's on your Nestory card. Or point the iPad camera at the QR code on your card.</p>
     <input class="code" id="cc" maxlength="14" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="TIGER-4782" onkeydown="if(event.key==='Enter')$('#go').click()">
     <button class="btn" id="go" style="margin-top:14px" onclick="codeLogin($('#cc').value)">Let's go ➜</button><p class="msg"></p></div></div>`,
-  home: homeView, intro: introView, assess: assessView, early: earlyView, test: testView, read: readView, check: checkView, result: resultView
+  home: homeView, grammar: grammarView, gintro: gIntroView, gquiz: gQuizView, gresult: gResultView, intro: introView, assess: assessView, early: earlyView, test: testView, read: readView, check: checkView, result: resultView
 };
 function draw(){ $("#app").innerHTML = (SCREENS[screen] || SCREENS.home)(); }
 
@@ -167,6 +173,7 @@ function homeView(){
     ${b ? `<div class="card"><div class="bandcard"><div class="dot" style="background:${bandColour(b)}"></div><div><small>I'm ${aBand(b)}</small><b>${bandName(b)} reader</b><small>${reads.length} ${reads.length === 1 ? "reading" : "readings"} done</small></div></div>${bandPath(b)}</div>` : ""}
     ${b && !needTest ? journeyCard() : ""}
     ${b === 20 && !needTest ? `<div class="card center" style="background:#F3F6FA"><div style="font-size:40px">💎</div><h2 class="big">You've reached the top band!</h2><p class="sub">Diamond is the highest band in Nestory. Every book here is a challenge worth taking.</p></div>` : ""}
+    ${b && !needTest ? grammarCard() : ""}
     ${b && !needTest ? nextStepCard() : ""}
     ${b && ns.ready_check ? `<div class="card center" style="background:var(--green)"><div style="font-size:44px">🌟</div><h2 class="big">You're ready for a band check!</h2><p class="sub" style="color:var(--gink)">Answer some questions from ${bandName(b + 1)} band. If you do well, you'll move up!</p><button class="btn green" onclick="startCheck()">Start my band check</button></div>` : ""}
   </div>`;
@@ -464,6 +471,63 @@ async function nextG(){
   const { data, error } = await db.rpc("ns_save_read", { p_text: t.id, p_comp: comp, p_grammar: gram, p_score: score, p_answers: RD.answers, p_seconds: Math.round((Date.now() - RD.start) / 1000) });
   if(error){ toast("I couldn't save that. Try again later."); }
   await loadMe(); R = { kind: "read", comp, gram, score, ready: data && data.ready_check }; go("result");
+}
+
+/* ---------- grammar quizzes (National Curriculum, separate from reading) ---------- */
+let gRes = [], gSet = [], GQ = null;
+const G_N = 15;
+const myYear = () => { const y = yearOf(me && me.grade); return y === null ? null : y; };
+const gBest = id => { const r = gRes.filter(x => x.topic === id); return r.length ? Math.max(...r.map(x => x.score)) : null; };
+const gDoneSince = x => gRes.some(r => r.topic === x.topic && r.created_at >= x.set_at);
+const gBadge = sc => sc == null ? `<span class="gb none">New</span>` : `<span class="gb ${sc >= 80 ? "ok" : sc >= 60 ? "mid" : "low"}">${sc >= 80 ? "⭐ " : ""}${sc}%</span>`;
+function grammarTopics(){ const y = myYear(), list = y !== null && y >= 1 ? GQ_TOPICS.filter(t => t.year === Math.min(6, y)) : []; return list; }
+function grammarCard(){
+  const todo = gSet.filter(x => !gDoneSince(x)), list = grammarTopics();
+  if(!list.length && !gSet.length) return "";
+  const first = todo.length ? GQ_BY_ID[todo[0].topic] : null;
+  return `<div class="card" style="background:#F3EEFB"><div class="row" style="display:flex;gap:12px;align-items:center"><div style="font-size:44px">✏️</div><div style="flex:1"><h2 style="margin:0">Grammar quizzes</h2>
+    <p class="sub" style="margin:4px 0 0">${first ? `Your teacher has set: <b>${esc(first.title)}</b>` : "Practise the grammar for your year."}</p></div></div>
+    <button class="btn" style="margin-top:12px;background:#DDD0F2;color:#3D2A66" onclick="${first ? `gStart('${first.id}')` : "go('grammar')"}">${first ? "Start my grammar quiz ➜" : "Practise grammar ➜"}</button>
+    ${first ? `<button class="link" style="margin-top:8px;width:100%" onclick="go('grammar')">See all grammar quizzes</button>` : ""}</div>`;
+}
+function grammarView(){
+  const y = myYear(), set = gSet.map(x => GQ_BY_ID[x.topic]), list = grammarTopics().filter(t => !gSet.some(x => x.topic === t.id));
+  const row = t => { const x = gSet.find(z => z.topic === t.id), due = x && !gDoneSince(x);
+    return `<button class="grow" onclick="gStart('${t.id}')"><span class="gt"><b>${esc(t.title)}</b>${due ? `<small class="due">⭐ Set by your teacher</small>` : `<small>Year ${t.year}</small>`}</span>${gBadge(gBest(t.id))}</button>`; };
+  return head("Grammar quizzes", y >= 1 ? `Year ${Math.min(6, y)} · ${G_N} questions each` : "Set by your teacher") + `<div class="body">
+    ${set.length ? `<div class="lbl" style="margin:4px 4px 8px">Set by your teacher</div><div class="card">${set.map(row).join("")}</div>` : ""}
+    ${list.length ? `<div class="lbl" style="margin:14px 4px 8px">Practise</div><div class="card">${list.map(row).join("")}</div>` : ""}
+    <p class="sub center" style="margin-top:10px">⭐ means 80% or more. Try to get a star in every quiz!</p></div>`;
+}
+function gStart(id){ const t = GQ_BY_ID[id]; if(!t) return; GQ = { t, items: shuffle(t.qs).slice(0, G_N).map(q => ({ q: q[0], opts: q[1], order: shuffle(q[1].map((o, k) => k)) })), i: 0, right: 0, answers: [], picked: null }; go("gintro"); }
+function gIntroView(){
+  const t = GQ.t, say = t.remember.join(" ");
+  return head(esc(t.title), `Year ${t.year} grammar`, "grammar") + `<div class="body"><div class="card"><div style="display:flex;gap:10px;align-items:flex-start"><div style="flex:1"><div class="lbl">Remember</div>
+    ${t.remember.map(l => `<p style="font-size:19px;margin:8px 0">${esc(l)}</p>`).join("")}</div><button class="speak" onclick='speak(${JSON.stringify(say)})' aria-label="Read this to me">🔊</button></div></div>
+    <button class="btn green" onclick="go('gquiz')">Start the quiz: ${GQ.items.length} questions ➜</button></div>`;
+}
+function gQuizView(){
+  const it = GQ.items[GQ.i], p = GQ.picked;
+  return head(esc(GQ.t.title), `Question ${GQ.i + 1} of ${GQ.items.length}`, "grammar") + `<div class="body"><div class="prog"><i style="width:${GQ.i / GQ.items.length * 100}%"></i></div>
+    <div class="card q"><div style="display:flex;gap:10px;align-items:flex-start"><h2 style="flex:1">${esc(it.q)}</h2><button class="speak" onclick='speak(${JSON.stringify(it.q.replace(/_+/g, "blank"))})' aria-label="Read this to me">🔊</button></div>
+    <div class="opts">${it.order.map((k, i) => `<button class="${p == null ? "" : k === 0 ? "right" : i === p ? "wrong" : ""}" ${p == null ? `onclick="gPick(${i})"` : "disabled"}>${esc(it.opts[k])}</button>`).join("")}</div>
+    ${p != null ? `<p class="sub" style="margin-top:12px;font-weight:900;color:${it.order[p] === 0 ? "var(--gink)" : "#9A4022"}">${it.order[p] === 0 ? "✅ That's right!" : `Not quite. The answer is: ${esc(it.opts[0])}`}</p><button class="btn green" style="margin-top:6px" onclick="gNext()">${GQ.i + 1 < GQ.items.length ? "Next ➜" : "See my score ➜"}</button>` : ""}</div></div>`;
+}
+function gPick(i){ const it = GQ.items[GQ.i], ok = it.order[i] === 0; GQ.picked = i; if(ok) GQ.right++; GQ.answers.push({ q: it.q, ok, chose: it.opts[it.order[i]] }); speak(ok ? "That's right!" : "Not quite."); draw(); }
+async function gNext(){
+  GQ.picked = null; GQ.i++;
+  if(GQ.i < GQ.items.length) return go("gquiz");
+  GQ.score = Math.round(GQ.right / GQ.items.length * 100); go("gresult");
+  const { error } = await db.rpc("ns_save_grammar", { p_topic: GQ.t.id, p_correct: GQ.right, p_total: GQ.items.length, p_answers: GQ.answers });
+  GQ.saved = !error; if(!error) gRes.push({ topic: GQ.t.id, score: GQ.score, correct: GQ.right, total: GQ.items.length, created_at: new Date().toISOString() });
+}
+function gResultView(){
+  const sc = GQ.score, wrong = GQ.answers.filter(a => !a.ok), msg = sc >= 80 ? "Brilliant! You've got this." : sc >= 60 ? "Good work. A little more practice and you'll have it." : "Keep practising. Read the Remember card again and have another go.";
+  speak(`You got ${GQ.right} out of ${GQ.items.length}. ${msg}`);
+  return head("Quiz finished!", esc(GQ.t.title), "grammar") + `<div class="body"><div class="card center"><div style="font-size:54px">${sc >= 80 ? "🌟" : sc >= 60 ? "👍" : "💪"}</div>
+    <h2 class="big">${GQ.right} out of ${GQ.items.length}</h2><p class="sub">${msg}</p>
+    <div style="display:grid;gap:10px;margin-top:14px"><button class="btn green" onclick="gStart('${GQ.t.id}')">Try again ➜</button><button class="btn" onclick="go('grammar')">More grammar quizzes</button><button class="btn" style="background:#fff;border:2px solid var(--line)" onclick="go('home')">Back home</button></div></div>
+    ${wrong.length ? `<div class="card"><div class="lbl">Look again at these</div>${wrong.map(a => { const it = GQ.items.find(x => x.q === a.q); return `<p style="margin:10px 0"><b>${esc(a.q)}</b><br><span style="color:#9A4022">You chose: ${esc(a.chose)}</span><br><span style="color:var(--gink)">Answer: ${esc(it ? it.opts[0] : "")}</span></p>`; }).join("")}</div>` : ""}</div>`;
 }
 
 /* ---------- band check (move up) ---------- */

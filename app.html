@@ -9,6 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="content.js"></script>
 <script src="qr.js"></script>
+<script src="grammar.js"></script>
 <style>
   .ggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}.gcard{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px}.gcard.mine{box-shadow:0 0 0 3px #8FC9A8}.gcard a.btn{text-decoration:none}
   .homegrid{display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:start}.stat.click{text-align:left;cursor:pointer;display:flex;flex-direction:column;justify-content:flex-start;font:inherit}.stat.click:hover{border-color:var(--blue)}.stat .hint{display:block;font-size:12px}
@@ -18,6 +19,8 @@
   @media (max-width:860px){ .homegrid{grid-template-columns:1fr} }
   .wiz{max-width:720px}.wiz h2{margin-bottom:12px}.wizsteps{display:flex;gap:8px;align-items:center;font-weight:800;font-size:14px;color:var(--muted)}.wizsteps i{font-style:normal;opacity:.5}.wizsteps .now{color:var(--navy);background:var(--sky);padding:4px 12px;border-radius:20px}.wizsteps .ok{color:var(--gink)}
   .wizkids{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}.wk{display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-radius:14px;padding:8px;background:#fff}.wk .mono{font-weight:800;letter-spacing:1px;color:var(--navy)}
+  .gpill{font-weight:900;font-size:13px;padding:3px 10px;border-radius:20px;white-space:nowrap}.gpill.ok,.gcell.ok{background:var(--green);color:var(--gink)}.gpill.mid,.gcell.mid{background:var(--amber);color:var(--aink)}.gpill.low,.gcell.low{background:var(--rose);color:var(--rink)}
+  .ggridt td,.ggridt th{text-align:center;padding:6px 4px}.ggridt td:first-child,.ggridt th:first-child{text-align:left}.gcell{display:inline-block;min-width:38px;padding:4px 6px;border-radius:8px;font-weight:800;font-size:13px;color:var(--muted)}
   table.codes{width:100%;border-collapse:collapse}table.codes td{padding:8px 6px;border-top:1px solid var(--line)}table.codes .mono{font-weight:800;letter-spacing:1px;color:var(--navy)}
   :root{--navy:#44546F;--ink:#2E3A4F;--blue:#7FA8DA;--blue2:#5F8FCB;--sky:#E3EDF8;--sky2:#F5F9FD;--green:#E2F1E8;--gink:#2D6248;--amber:#FFF4DE;--aink:#8A5A12;--rose:#FBEDE7;--rink:#9A4022;--muted:#6B7689;--line:#DCE6F2}
   *{box-sizing:border-box;margin:0;padding:0}
@@ -199,13 +202,16 @@ async function loadClasses(){
 }
 async function openClass(id, first){
   S.cls = S.classes.find(c => c.id === id); localStorage.setItem("ns_class", id); S.kid = null;
-  const [k, r, t, rd, m, lg] = await Promise.all([
+  const [k, r, t, rd, m, lg, gq, gst] = await Promise.all([
     db.from("students").select("id, first_name, picture").eq("class_id", id).order("first_name"),
     db.from("ns_readers").select("*").eq("class_id", id),
     db.from("ns_tests").select("*").eq("class_id", id).order("created_at"),
     db.from("ns_reads").select("id, student_id, band, text_id, comp, grammar, score, seconds, answers, created_at").eq("class_id", id).order("created_at"),
     db.from("ns_moves").select("*").eq("class_id", id).order("created_at"),
-    db.rpc("ns_class_logins", { p_class: id })]);
+    db.rpc("ns_class_logins", { p_class: id }),
+    db.from("ns_grammar").select("student_id, topic, score, correct, total, created_at").eq("class_id", id).order("created_at"),
+    db.from("ns_grammar_set").select("topic, set_at").eq("class_id", id)]);
+  S.gram = (gq && gq.data) || []; S.gset = (gst && gst.data) || [];
   S.codes = {}; (lg.data || []).forEach(x => S.codes[x.student_id] = x.code);
   S.kids = k.data || []; S.readers = r.data || []; S.tests = t.data || []; S.reads = rd.data || []; S.moves = m.data || [];
   if(first) S.tab = S.kids.length && S.kids.every(k => testsOf(k.id).length) ? "class" : "start";
@@ -345,9 +351,42 @@ function render(){
   const alerts = S.kids.filter(k => ["down", "ready", "test", "slow"].includes(statusOf(k.id)[0])).length;
   app.innerHTML = `<div class="top"><div class="in"><a class="brand" href="index.html"><img src="bird.png" alt="">Nestory</a><span class="sp"></span>${S.classes && S.classes.length && S.tab !== "school" ? `<select style="width:auto" onchange="openClass(this.value)">${S.classes.map(c => `<option value="${c.id}" ${S.cls && S.cls.id === c.id ? "selected" : ""}>${esc(c.name)} · ${esc(c.grade)}</option>`).join("")}</select>` : ""}
     <button class="link" onclick="signOut()">Sign out</button></div>
-    <div class="in tabrow"><div class="tabs">${[["start", "🏠 Home"], ...(S.schoolRole === "admin" ? [["school", "🏫 Whole school"]] : []), ["class", "📋 My class"], ["alerts", `🔔 Alerts${alerts ? `<span class="n">${alerts}</span>` : ""}`], ["progress", "📈 Tracker"], ["children", "🧒 Children"], ["guides", "📚 Guides"]].map(([k, l]) => `<button class="${S.tab === k ? "on" : ""}" onclick="S.tab='${k}';S.kid=null;render()">${l}</button>`).join("")}</div></div></div>
-    <div class="main">${S.error ? `<div class="err">⚠️ ${esc(S.error)} <button class="link" onclick="S.error='';render()">OK</button></div>` : ""}${!S.classes ? `<div class="card empty">Loading…</div>` : !S.cls && !["children", "start", "school", "guides"].includes(S.tab) ? `<div class="card empty">🐣<br><br>Start with the 🏠 Start here tab to set up your class.</div>` : ({ start: startView, school: schoolView, class: classView, alerts: alertsView, progress: progressView, children: childrenView, guides: guidesView })[S.tab]()}</div>
+    <div class="in tabrow"><div class="tabs">${[["start", "🏠 Home"], ...(S.schoolRole === "admin" ? [["school", "🏫 Whole school"]] : []), ["class", "📋 My class"], ["alerts", `🔔 Alerts${alerts ? `<span class="n">${alerts}</span>` : ""}`], ["progress", "📈 Tracker"], ["grammar", "✏️ Grammar"], ["children", "🧒 Children"], ["guides", "📚 Guides"]].map(([k, l]) => `<button class="${S.tab === k ? "on" : ""}" onclick="S.tab='${k}';S.kid=null;render()">${l}</button>`).join("")}</div></div></div>
+    <div class="main">${S.error ? `<div class="err">⚠️ ${esc(S.error)} <button class="link" onclick="S.error='';render()">OK</button></div>` : ""}${!S.classes ? `<div class="card empty">Loading…</div>` : !S.cls && !["children", "start", "school", "guides"].includes(S.tab) ? `<div class="card empty">🐣<br><br>Start with the 🏠 Start here tab to set up your class.</div>` : ({ start: startView, school: schoolView, class: classView, alerts: alertsView, progress: progressView, children: childrenView, guides: guidesView, grammar: grammarView })[S.tab]()}</div>
     ${S.kid ? kidModal() : ""}${S.wiz ? wizView() : ""}`;
+}
+/* ---------- grammar quizzes: set topics and track results ---------- */
+const gBestOf = (sid, topic) => { const r = (S.gram || []).filter(x => x.student_id === sid && x.topic === topic); return r.length ? Math.max(...r.map(x => x.score)) : null; };
+const gLevel = sc => sc == null ? "" : sc >= 80 ? "ok" : sc >= 60 ? "mid" : "low";
+function classGYear(){ const y = yearOf(S.cls && S.cls.grade); return y === null ? 1 : Math.max(1, Math.min(6, y)); }
+async function toggleGSet(topic, on){
+  const { error } = await db.rpc("ns_set_grammar", { p_class: S.cls.id, p_topic: topic, p_on: on });
+  if(error){ S.error = errMsg(error); return render(); }
+  S.gset = on ? (S.gset || []).concat([{ topic, set_at: new Date().toISOString() }]) : (S.gset || []).filter(x => x.topic !== topic);
+  toast(on ? "Set for the class ✓ Children will see it on their home page" : "Removed"); render();
+}
+function grammarView(){
+  if(!S.cls) return `<div class="card empty">Create a class first.</div>`;
+  const y = S.gy || classGYear(), T = GQ_TOPICS.filter(t => t.year === y), K = S.kids;
+  const isSet = id => (S.gset || []).some(x => x.topic === id);
+  const stats = t => { const sc = K.map(k => gBestOf(k.id, t.id)).filter(v => v != null); return { done: sc.length, avg: sc.length ? Math.round(sc.reduce((a, b) => a + b, 0) / sc.length) : null, gaps: K.filter(k => { const v = gBestOf(k.id, t.id); return v != null && v < 60; }) }; };
+  const rows = T.map((t, i) => { const st = stats(t);
+    return `<tr><td><b>${i + 1}. ${esc(t.title)}</b><br><span class="hint">${esc(t.nc)}</span></td><td style="white-space:nowrap">${st.done}/${K.length}</td><td>${st.avg == null ? "–" : `<span class="gpill ${gLevel(st.avg)}">${st.avg}%</span>`}</td>
+      <td style="text-align:right;white-space:nowrap">${isSet(t.id) ? `<span class="chip" style="background:var(--green)">✓ Set</span> <button class="link" onclick="toggleGSet('${t.id}', false)">Remove</button>` : `<button class="btn small soft" onclick="toggleGSet('${t.id}', true)">Set for class</button>`}</td></tr>`; }).join("");
+  const grid = `<table class="ggridt"><tr><th>Child</th>${T.map((t, i) => `<th title="${esc(t.title)}">${i + 1}</th>`).join("")}</tr>${K.map(k => `<tr><td><b>${esc(k.picture)} ${esc(k.first_name)}</b></td>${T.map(t => { const v = gBestOf(k.id, t.id); return `<td><span class="gcell ${gLevel(v)}">${v == null ? "·" : v}</span></td>`; }).join("")}</tr>`).join("")}</table>`;
+  const gapTopics = T.map(t => [t, stats(t)]).filter(([t, st]) => st.gaps.length && (st.gaps.length >= 3 || st.gaps.length / Math.max(1, st.done) >= 0.3));
+  const support = K.map(k => [k, T.filter(t => { const v = gBestOf(k.id, t.id); return v != null && v < 60; })]).filter(([k, g]) => g.length >= 2);
+  const notDone = T.filter(t => isSet(t.id)).map(t => [t, K.filter(k => !(S.gram || []).some(x => x.student_id === k.id && x.topic === t.id && x.created_at >= ((S.gset || []).find(z => z.topic === t.id) || {}).set_at))]).filter(([t, n]) => n.length);
+  return `<div class="row between" style="margin-bottom:14px"><div><h1>✏️ Grammar quizzes</h1><p class="hint">National Curriculum grammar and punctuation, separate from reading. Each quiz has 15 questions, drawn from a bank of 20.</p></div>
+      <div class="row"><label style="margin:0">Year group</label><select style="width:auto" onchange="S.gy=+this.value;render()">${[1, 2, 3, 4, 5, 6].map(n => `<option value="${n}" ${n === y ? "selected" : ""}>Year ${n}${n === classGYear() ? " (your class)" : ""}</option>`).join("")}</select></div></div>
+    ${notDone.length ? `<div class="card" style="background:var(--amber)"><div class="lbl">Still to do</div>${notDone.map(([t, n]) => `<p style="margin:6px 0"><b>${esc(t.title)}</b>: ${n.length} ${n.length === 1 ? "child hasn't" : "children haven't"} done it yet <span class="hint">(${n.slice(0, 8).map(k => esc(k.first_name)).join(", ")}${n.length > 8 ? "…" : ""})</span></p>`).join("")}</div>` : ""}
+    <div class="card" style="overflow-x:auto"><div class="lbl">Year ${y} topics</div><p class="hint" style="margin-bottom:8px">Click <b>Set for class</b> and children see that quiz first on their home page. They can also practise any topic for their year.</p>
+      <table><tr><th>Topic</th><th>Done</th><th>Class average</th><th></th></tr>${rows}</table></div>
+    <div class="grid2"><div class="card"><div class="lbl">Gaps and next steps</div>
+      ${gapTopics.length ? gapTopics.map(([t, st]) => `<p style="margin:8px 0">🔁 <b>Reteach ${esc(t.title)}</b> to ${st.gaps.map(k => esc(k.first_name)).join(", ")} <span class="hint">(below 60%)</span></p>`).join("") : `<p class="hint">No group gaps yet. They appear here when several children score below 60% on a topic.</p>`}
+      ${support.length ? `<p class="lbl" style="margin-top:12px">Extra support</p>${support.map(([k, g]) => `<p style="margin:6px 0">🤝 <b>${esc(k.first_name)}</b> needs help with ${g.map(t => esc(t.title)).join(", ")}</p>`).join("")}` : ""}</div>
+      <div class="card"><div class="lbl">Key</div><p style="margin:6px 0"><span class="gpill ok">80%+</span> Secure</p><p style="margin:6px 0"><span class="gpill mid">60–79%</span> Developing</p><p style="margin:6px 0"><span class="gpill low">below 60%</span> Gap: reteach</p><p class="hint" style="margin-top:8px">Each child's best score is shown.</p></div></div>
+    <div class="card" style="overflow-x:auto"><div class="lbl">Grammar tracker · Year ${y}</div>${K.length ? grid : `<p class="hint">No children yet.</p>`}<p class="hint" style="margin-top:8px">Numbers across the top match the topic list above.</p></div>`;
 }
 function guidesView(){
   const yrs = m => `${Math.floor(m / 12)}y${m % 12 ? " " + (m % 12) + "m" : ""}`;
@@ -358,6 +397,7 @@ function guidesView(){
       <p class="hint" style="margin:4px 0 2px">${esc(B[3])} · reading age ${yrs(B[4])}–${yrs(B[5])}</p><p class="hint" style="margin-bottom:10px">${n} texts · ${esc(B[6])}</p>
       <div class="row"><a class="btn small" href="${file}.pdf" target="_blank" rel="noopener">👁 View</a><a class="btn small soft" href="${file}.docx" download>⬇ Word</a></div></div>`; };
   return `<div class="card"><h2 style="margin-bottom:4px">📚 Band guides</h2><p class="hint">Everything about each colour band: year group, reading age, grammar focus, and every reading text with its vocabulary, questions, answers and grammar practice. <b>View</b> opens the guide here; <b>Word</b> downloads a copy you can edit or print.</p></div>
+    <div class="lbl" style="margin:18px 4px 8px">Grammar quizzes · Years 1 to 6</div><div class="ggrid"><div class="gcard" style="border-top:8px solid #DDD0F2"><b style="font-size:17px">✏️ Grammar quiz guide</b><p class="hint" style="margin:4px 0 10px">All 39 National Curriculum topics: Remember cards and every question with its answer.</p><div class="row"><a class="btn small" href="Nestory-Grammar-Quizzes.pdf" target="_blank" rel="noopener">👁 View</a><a class="btn small soft" href="Nestory-Grammar-Quizzes.docx" download>⬇ Word</a></div></div></div>
     ${stages.map(([t, a, z]) => `<div class="lbl" style="margin:18px 4px 8px">${t}</div><div class="ggrid">${Array.from({ length: z - a + 1 }, (_, i) => card(a + i)).join("")}</div>`).join("")}`;
 }
 function loginView(){
@@ -378,6 +418,8 @@ function startView(){
   const todo = [];
   if(untested.length) todo.push(["🗺️", `<b>${untested.length} ${untested.length === 1 ? "child hasn't" : "children haven't"}</b> taken the reading test yet`, untested.slice(0, 6).map(k => esc(k.first_name)).join(", ") + (untested.length > 6 ? "…" : ""), `<button class="btn small" onclick="S.tab='class';render()">See who</button>`]);
   if(moves) todo.push(["🔔", `<b>${moves} ${moves === 1 ? "child needs" : "children need"}</b> your attention`, "Moving up, moving down or a slower start", `<button class="btn small" onclick="S.tab='alerts';render()">Open alerts</button>`]);
+  const gTodo = (S.gset || []).map(x => [GQ_BY_ID[x.topic], K.filter(k => !(S.gram || []).some(g => g.student_id === k.id && g.topic === x.topic && g.created_at >= x.set_at)).length]).filter(([t, n]) => t && n);
+  gTodo.forEach(([t, n]) => todo.push(["✏️", `<b>${n} ${n === 1 ? "child hasn't" : "children haven't"}</b> done the grammar quiz: ${esc(t.title)}`, "Set for your class", `<button class="btn small soft" onclick="S.tab='grammar';render()">See grammar</button>`]));
   if(openW) todo.push(["📝", `<b>${esc(openW.title)}</b> is open now`, `Until ${fmtDate(openW.closes)}. Children see it on their home page.`, `<button class="btn small soft" onclick="S.tab='progress';render()">See results</button>`]);
   else if(nextW) todo.push(["📅", `<b>${esc(nextW.title)}</b> opens on ${fmtDate(nextW.opens)}`, "Children will see it on their home page.", ""]);
   const steps = [["School", !!S.school], ["Class", !!S.cls], ["Children", K.length > 0], ["Cards", K.length > 0], [`Reading test ${tested}/${K.length}`, tested === K.length]];
